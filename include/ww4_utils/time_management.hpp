@@ -12,9 +12,9 @@
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.
- * @author Hendrik L. Tolman (Initial, 2026)
- * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026)
- * @date 2026-03-11
+ * @author Hendrik L. Tolman (Initial, 2026-03-11)
+ * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026-03-18)
+ * @date 2026-03-18
  */
 
 #ifndef WW4_UTILS_TIME_MANAGEMENT_HPP
@@ -38,8 +38,8 @@ namespace ww4_utils {
  * @struct DateTime
  * @brief Numerical representation of date and time.
  * @details Stores date as YYYYMMDD and time as HHMMSS.ssssss.
- * @author Hendrik L. Tolman (Initial, 2026)
- * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026)
+ * @author Hendrik L. Tolman (Initial, 2026-03-11)
+ * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026-03-18)
  */
 struct DateTime {
   int ymd;    ///< Current date in YYYYMMDD format.
@@ -63,8 +63,8 @@ using DateArray = std::array<int, 8>;
  * @details Provides static methods for time arithmetic, calendar conversions,
  *          and high-precision profiling. Supports multiple calendar systems:
  *          Standard (Gregorian), NoLeap (365-day), and ThreeSixtyDay.
- * @author Hendrik L. Tolman (Initial, 2026)
- * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026)
+ * @author Hendrik L. Tolman (Initial, 2026-03-11)
+ * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026-03-18)
  */
 class TimeManagement {
 public:
@@ -152,8 +152,9 @@ public:
    * @note Original author in WW3: Hendrik L. Tolman.
    * @param[out] dateArray Date array to be filled.
    * @post dateArray contains the current UTC system time.
-   * @author Aldgisl, Hendrik L. Tolman (Initial, 2026)
-   * @date 2026-03-11
+   * @author Aldgisl, Hendrik L. Tolman (Initial, 2026-03-11)
+   * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026-03-18)
+   * @date 2026-03-18
    */
   static void getSystemDateArray(const std::span<int, 8> dateArray) noexcept;
 
@@ -166,8 +167,9 @@ public:
    * @param[in] referenceDate Reference date array (DATE_AND_TIME format).
    * @param[out] elapsedTime Elapsed time in seconds.
    * @post elapsedTime contains the difference in seconds.
-   * @author Aldgisl, Hendrik L. Tolman (Initial, 2026)
-   * @date 2026-03-11
+   * @author Aldgisl, Hendrik L. Tolman (Initial, 2026-03-11)
+   * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026-03-18)
+   * @date 2026-03-18
    */
   static void getElapsedTimeSince(const std::span<const int, 8> referenceDate,
                                   double &elapsedTime) noexcept;
@@ -176,8 +178,9 @@ public:
    * @brief Gets the present date and time as a DateTime structure.
    * @details Retrieves the current UTC system time.
    * @return Current date and time in DateTime format.
-   * @author Aldgisl, Hendrik L. Tolman (Initial, 2026)
-   * @date 2026-03-11
+   * @author Aldgisl, Hendrik L. Tolman (Initial, 2026-03-11)
+   * @author Aldgisl, Hendrik L. Tolman (Last Update, 2026-03-18)
+   * @date 2026-03-18
    */
   static DateTime getPresentDateTime() noexcept;
 

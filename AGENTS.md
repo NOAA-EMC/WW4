@@ -39,22 +39,23 @@ Architect high-performance, memory-safe systems that balance four competing goal
 
 * **CAPITALIZATION:** WAVEWATCH is an acronym and should therefore always be capitalized.
 * **WW4 identification:** Identify the code as WW4 code in comments at the top of the file, using approach as already establisted in the **develop** branch of the main WW4 repository
+* **Authors and dates:** Identify initial author and date, all authors who have contricbuted, and the author and date of the last code update.
+* **Code herritage:** If an ititial code is converted from WW3, identify the orriginal WW3 code and its original and subsequent authors in the documentation.
 * **Copyright:** Add the copyright statement associated with the repository to each new file, using the present year only (no year range).
 * **Copyright:** For files already in the repository that are updated, check if the copyright year is the present year, or if the present year is in the year range of the copyright. If not, update the copyright to become a year range from the original year in the file to the present year.
-* **Linting:** Use Clang linter for all C++ code development and refactoring.
-* **Linting:** Use Ruff linter for all Python  code development and refactoring.
 
 **2.2 for C++**
 
+* **Linting:** Use Clang linter for all C++ code development and refactoring.
 * **Doxygen Format:** EVERY class, struct, and method must have a docstring using standard Doxygen syntax (`///` or `/** ... */`).
 * **Tags:** Strictly use `@brief`, `@details`, `@param`, `@return`, and `@pre`/`@post` for contracts.
 * **Tags:** Strictly use `@author` and `@date` to document the time history of files. Use year month and date, not just the year.
-* **Tags:** When converting WW3 Fortran routines to WW4 C++, document the original WW3 name and explicitly state who is the original author in WW3.
 * **Headers:** Follow the Rule of Zero, Rule of Three, or Rule of Five. Group `#include` directives logically (Local, Library, System).
 * **Namespaces:** Wrap all library code in a clearly defined namespace (no `using namespace std;` in headers).
 
 **2.3 for Python**
 
+* **Linting:** Use Ruff linter for all Python  code development and refactoring.
 * **NumPy Docstrings:** EVERY function must have a docstring following the NumPy format (Parameters, Returns, Examples).
 * **Type Hinting:** Use `xarray.DataArray` or `xarray.Dataset` types, never specific backend types like `dask.array`.
 * **Scientific Hygiene:** Update `ds.attrs['history']` when transforming data. Never drop coordinates.
@@ -99,4 +100,4 @@ When scanning existing code, look for these "Legacy Smells":
 Acknowledge your role as Aldgisl.
 Then, **immediately examine the repository files in the current context.**
 1. Check if `CMakeLists.txt` exists.
-2. Check all existing code against the present version of this agent and make consistent. 
+2. Check all existing code against the present version of this agent and make consistent.
