@@ -4,9 +4,8 @@
 #      +--------------------------------------------------------+
 #
 # @file ww4_clean_all
-# @brief Shell wrapper for the WAVEWATCH IV (WW4) clean_all tool.
-# @details This script identifies the repository root and executes the
-#          underlying Python clean_all tool.
+# @brief A tool to remove all compilation output, including executables and libraries.
+# @details This script removes the 'build' and 'exe' directories in the repository root.
 #
 # Usage
 # -----
@@ -17,16 +16,40 @@
 #               Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks
 #               of the National Weather Service.
 # @author Aldgisl, Hendrik Tolman (Initial, 2026-03-30)
+# @author Aldgisl, Hendrik Tolman (Last Update, 2026-03-31)
 
 # Identify the repository root (parent of the directory containing this script)
 TOOLS_DIR=$(cd "$(dirname "$0")" && pwd)
 ACTIVE_CLONE=$(cd "$TOOLS_DIR/.." && pwd)
 
-CLEAN_TOOL="$ACTIVE_CLONE/tools/ww4_clean_all.py"
+BUILD_DIR="$ACTIVE_CLONE/build"
+EXE_DIR="$ACTIVE_CLONE/exe"
 
-if [ ! -f "$CLEAN_TOOL" ]; then
-    echo "Error: Clean all tool not found at $CLEAN_TOOL"
-    exit 1
+# Remove build directory
+if [ -d "$BUILD_DIR" ]; then
+    echo "Removing build directory: $BUILD_DIR"
+    rm -rf "$BUILD_DIR"
+    if [ $? -eq 0 ]; then
+        echo "Build directory removed."
+    else
+        echo "Error removing build directory."
+        exit 1
+    fi
+else
+    echo "No build directory found."
 fi
 
-python3 "$CLEAN_TOOL" "$@"
+# Remove exe directory
+if [ -d "$EXE_DIR" ]; then
+    echo "Removing executable directory: $EXE_DIR"
+    rm -rf "$EXE_DIR"
+    if [ $? -eq 0 ]; then
+        echo "Executable directory removed."
+    else
+        echo "Error removing executable directory."
+    fi
+else
+    echo "No executable directory found."
+fi
+
+echo -e "\nClean all complete."

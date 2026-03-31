@@ -4,9 +4,8 @@
 #      +--------------------------------------------------------+
 #
 # @file ww4_clean
-# @brief Shell wrapper for the WAVEWATCH IV (WW4) clean tool.
-# @details This script identifies the repository root and executes the
-#          underlying Python clean tool.
+# @brief A tool to remove intermediate files created by compilation.
+# @details This script removes the 'build' directory in the repository root.
 #
 # Usage
 # -----
@@ -17,16 +16,23 @@
 #               Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks
 #               of the National Weather Service.
 # @author Aldgisl, Hendrik Tolman (Initial, 2026-03-30)
+# @author Aldgisl, Hendrik Tolman (Last Update, 2026-03-31)
 
 # Identify the repository root (parent of the directory containing this script)
 TOOLS_DIR=$(cd "$(dirname "$0")" && pwd)
 ACTIVE_CLONE=$(cd "$TOOLS_DIR/.." && pwd)
 
-CLEAN_TOOL="$ACTIVE_CLONE/tools/ww4_clean.py"
+BUILD_DIR="$ACTIVE_CLONE/build"
 
-if [ ! -f "$CLEAN_TOOL" ]; then
-    echo "Error: Clean tool not found at $CLEAN_TOOL"
-    exit 1
+if [ -d "$BUILD_DIR" ]; then
+    echo "Removing build directory: $BUILD_DIR"
+    rm -rf "$BUILD_DIR"
+    if [ $? -eq 0 ]; then
+        echo "Clean complete."
+    else
+        echo "Error removing build directory."
+        exit 1
+    fi
+else
+    echo "No build directory found. Nothing to clean."
 fi
-
-python3 "$CLEAN_TOOL" "$@"
