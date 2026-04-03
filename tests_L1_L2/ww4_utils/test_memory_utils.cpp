@@ -13,7 +13,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-02-27
- * @date Last Update, 2026-03-30
+ * @date Last Update, 2026-04-03
  */
 
 #include "ww4_utils/memory_utils.hpp"
@@ -69,6 +69,16 @@ TEST(MemoryUtilsTest, MemoryIncreaseAfterAllocation) {
 
   const auto after = MemoryUtils::captureMemoryUsage();
   ASSERT_TRUE(after.has_value());
+}
+
+/**
+ * @test Verify that captureMemoryHWM returns a valid non-zero metric.
+ */
+TEST(MemoryUtilsTest, CaptureMemoryHWM) {
+  const auto hwm = MemoryUtils::captureMemoryHWM();
+
+  ASSERT_TRUE(hwm.has_value());
+  EXPECT_GT(*hwm, 0);
 }
 
 } // namespace ww4_utils

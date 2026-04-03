@@ -14,7 +14,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-02-27
- * @date Last Update, 2026-03-31
+ * @date Last Update, 2026-04-03
  */
 
 #ifndef WW4_UTILS_MEMORY_UTILS_HPP
@@ -55,6 +55,14 @@ public:
    * @pre The operating system must provide /proc/self/status (Linux).
    */
   [[nodiscard]] static std::optional<MemoryUsage> captureMemoryUsage() noexcept;
+
+  /**
+   * @brief Captures the memory high water mark (HWM) of the calling process.
+   * @details Reads the vmHWM metric from /proc/self/status on Linux systems.
+   * @return The peak resident set size in kB, or std::nullopt if capture fails.
+   * @pre The operating system must provide /proc/self/status (Linux).
+   */
+  [[nodiscard]] static std::optional<long> captureMemoryHWM() noexcept;
 };
 
 } // namespace ww4_utils
