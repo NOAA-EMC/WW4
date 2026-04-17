@@ -4,28 +4,22 @@
  *       +--------------------------------------------------------+
  *
  * @file test_ww4_service.cpp
- * @brief Unit tests for WW4 constants in ww4_service.hpp.
- * @details Verifies the values of mathematical and physical constants.
+ * @brief Unit tests for WW4 service routines in ww4_service.hpp.
+ * @details Verifies the mathematical routines and dispersion calculations.
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.
  * @date Initial, 2026-04-10
- * @date Last update, 2026-04-13
+ * @date Last update, 2026-04-17
  */
 
 #include "ww4_utils/ww4_service.hpp"
 #include <gtest/gtest.h>
 
 namespace ww4_utils {
-namespace constants {
+namespace ww4_service {
 namespace testing {
 
-/**
- * @test VerifyMathematicalConstants
- * @brief Ensures all mathematical constants are correctly defined.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI)
- */
 /**
  * @test VerifyDispersionStruct
  * @brief Ensures the Dispersion struct correctly stores values.
@@ -42,94 +36,6 @@ TEST(WW4ServiceTest, VerifyDispersionStruct) {
   disp2.cg = 5.0;
   EXPECT_DOUBLE_EQ(disp2.k, 2.0);
   EXPECT_DOUBLE_EQ(disp2.cg, 5.0);
-}
-
-TEST(WW4ServiceTest, VerifyMathematicalConstants) {
-  static_assert(PI == 3.14159265358979323846);
-  static_assert(TPI == 2.0 * PI);
-  static_assert(HPI == 0.5 * PI);
-  static_assert(TPIINV == 1.0 / TPI);
-  static_assert(HPIINV == 1.0 / HPI);
-  static_assert(RADE == 180.0 / PI);
-  static_assert(DERA == PI / 180.0);
-
-  EXPECT_DOUBLE_EQ(PI, 3.14159265358979323846);
-  EXPECT_DOUBLE_EQ(TPI, 6.28318530717958647692);
-  EXPECT_DOUBLE_EQ(HPI, 1.57079632679489661923);
-  EXPECT_NEAR(TPIINV, 0.15915494309189533, 1e-15);
-  EXPECT_NEAR(HPIINV, 0.6366197723675813, 1e-15);
-  EXPECT_NEAR(RADE, 57.29577951308232, 1e-14);
-  EXPECT_NEAR(DERA, 0.017453292519943295, 1e-17);
-}
-
-/**
- * @test VerifyPhysicalConstants
- * @brief Ensures all physical constants match WW3 values.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI)
- */
-TEST(WW4ServiceTest, VerifyPhysicalConstants) {
-  static_assert(GRAV == 9.806);
-  static_assert(DWAT == 1000.0);
-  static_assert(DAIR == 1.225);
-  static_assert(NU_AIR == 1.4e-5);
-  static_assert(NU_WATER == 1.31e-6);
-  static_assert(SED_SG == 2.65);
-  static_assert(KAPPA == 0.40);
-  static_assert(RADIUS == 4.0e7 / TPI);
-
-  EXPECT_DOUBLE_EQ(GRAV, 9.806);
-  EXPECT_DOUBLE_EQ(DWAT, 1000.0);
-  EXPECT_DOUBLE_EQ(DAIR, 1.225);
-  EXPECT_DOUBLE_EQ(NU_AIR, 1.4e-5);
-  EXPECT_DOUBLE_EQ(NU_WATER, 1.31e-6);
-  EXPECT_DOUBLE_EQ(SED_SG, 2.65);
-  EXPECT_DOUBLE_EQ(KAPPA, 0.40);
-  EXPECT_NEAR(RADIUS, 6366197.723675813, 1e-8);
-}
-
-/**
- * @test VerifyDerivedConstants
- * @brief Ensures derived constants are correctly calculated.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI)
- */
-TEST(WW4ServiceTest, VerifyDerivedConstants) {
-  EXPECT_DOUBLE_EQ(G2PI3I, 1.0 / (GRAV * GRAV * TPI * TPI * TPI));
-  EXPECT_DOUBLE_EQ(G1PI1I, 1.0 / (GRAV * TPI));
-}
-
-/**
- * @test VerifyModelConstants
- * @brief Ensures model-specific constants are correctly defined.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI)
- */
-TEST(WW4ServiceTest, VerifyModelConstants) {
-  static_assert(UNDEF == -999.9);
-  static_assert(ABMIN == -1.0);
-  static_assert(ABMAX == 8.0);
-  static_assert(KDMAX == 20.0);
-  static_assert(JONSWAP_FACTOR == 0.06175);
-
-  EXPECT_DOUBLE_EQ(UNDEF, -999.9);
-  EXPECT_DOUBLE_EQ(ABMIN, -1.0);
-  EXPECT_DOUBLE_EQ(ABMAX, 8.0);
-  EXPECT_DOUBLE_EQ(KDMAX, 20.0);
-  EXPECT_DOUBLE_EQ(JONSWAP_FACTOR, 0.06175);
-}
-
-/**
- * @test VerifyConstantsConsistency
- * @brief Ensures mathematical relations between constants are maintained.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI)
- */
-TEST(WW4ServiceTest, VerifyConstantsConsistency) {
-  EXPECT_NEAR(DERA * RADE, 1.0, 1e-15);
-  EXPECT_NEAR(TPI * TPIINV, 1.0, 1e-15);
-  EXPECT_NEAR(HPI * HPIINV, 1.0, 1e-15);
-  EXPECT_NEAR(TPI, 4.0 * HPI, 1e-15);
 }
 
 /**
@@ -178,22 +84,25 @@ TEST(WW4ServiceTest, VerifyDistHaversine) {
 
   // Test distance of 1 degree along the equator
   // lon1=0, lat1=0, lon2=1, lat2=0 -> distance should be 1 degree in radians
-  EXPECT_NEAR(ww4_service::dist_Haversine(0.0, 0.0, 1.0, 0.0), DERA, 1e-9);
+  EXPECT_NEAR(ww4_service::dist_Haversine(0.0, 0.0, 1.0, 0.0),
+              ww4_constants::DERA, 1e-9);
 
   // Test distance of 1 degree along a meridian
   // lon1=0, lat1=0, lon2=0, lat2=1 -> distance should be 1 degree in radians
-  EXPECT_NEAR(ww4_service::dist_Haversine(0.0, 0.0, 0.0, 1.0), DERA, 1e-9);
+  EXPECT_NEAR(ww4_service::dist_Haversine(0.0, 0.0, 0.0, 1.0),
+              ww4_constants::DERA, 1e-9);
 
   // Test distance of 180 degrees (antipodal points)
   // lon1=0, lat1=0, lon2=180, lat2=0 -> distance should be PI radians
-  EXPECT_NEAR(ww4_service::dist_Haversine(0.0, 0.0, 180.0, 0.0), PI, 1e-9);
+  EXPECT_NEAR(ww4_service::dist_Haversine(0.0, 0.0, 180.0, 0.0),
+              ww4_constants::PI, 1e-9);
 
   // Test distance between (0, 45) and (1, 45)
   // dlat = 0
   // a = cos(45)^2 * sin(0.5)^2
   // c = 2 * atan2(sqrt(a), sqrt(1-a))
-  double dlon_rad = 1.0 * DERA;
-  double lat_rad = 45.0 * DERA;
+  double dlon_rad = 1.0 * ww4_constants::DERA;
+  double lat_rad = 45.0 * ww4_constants::DERA;
   double a =
       std::pow(std::cos(lat_rad), 2) * std::pow(std::sin(dlon_rad / 2.0), 2);
   double expected_c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
@@ -214,7 +123,7 @@ TEST(WW4ServiceTest, VerifyDistOnSphere) {
 
   // Test distance of 1 degree along the equator
   // 1 degree in radians * RADIUS should be the distance in meters
-  double expected_m = DERA * RADIUS;
+  double expected_m = ww4_constants::DERA * ww4_constants::RADIUS;
   EXPECT_NEAR(ww4_service::dist_on_sphere(0.0, 0.0, 1.0, 0.0), expected_m,
               1e-3);
 
@@ -253,7 +162,7 @@ TEST(WW4ServiceTest, VerifyWavenumberBeji) {
     // Back-calculate omega^2 from exact dispersion relation: omega^2 = g * k *
     // tanh(k * h)
     double omega_sq_exact =
-        constants::GRAV * result.k * std::tanh(result.k * tc.h);
+        ww4_constants::GRAV * result.k * std::tanh(result.k * tc.h);
     double omega_exact = std::sqrt(omega_sq_exact);
 
     // Beji (2013) is an approximation, so we expect some error but it should be
@@ -286,5 +195,5 @@ TEST(WW4ServiceTest, VerifyWavenumberBeji) {
 }
 
 } // namespace testing
-} // namespace constants
+} // namespace ww4_service
 } // namespace ww4_utils

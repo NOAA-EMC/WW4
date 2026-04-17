@@ -68,7 +68,11 @@ target_link_libraries(test_memory_utils PRIVATE ww4_utils GTest::gtest_main)
 add_executable(test_ww4_service tests_L1_L2/ww4_utils/test_ww4_service.cpp)
 target_link_libraries(test_ww4_service PRIVATE ww4_utils GTest::gtest_main)
 
+add_executable(test_ww4_constants tests_L1_L2/ww4_utils/test_ww4_constants.cpp)
+target_link_libraries(test_ww4_constants PRIVATE ww4_utils GTest::gtest_main)
+
 include(GoogleTest)
 gtest_discover_tests(test_time_management)
 gtest_discover_tests(test_memory_utils)
 gtest_discover_tests(test_ww4_service)
+gtest_discover_tests(test_ww4_constants)
