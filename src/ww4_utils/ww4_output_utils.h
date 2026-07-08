@@ -28,6 +28,24 @@ namespace ww4_utils {
 // Forward declaration of RunConfig to avoid circular dependency
 struct RunConfig;
 
+/**
+ * @struct OutputConfig
+ * @brief Configuration for a specific output type.
+ * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
+ * @author Contributors: Jules (Agentic AI)
+ * @var OutputConfig::requested
+ * @brief Is this output requested?
+ * @var OutputConfig::startTime
+ * @brief Start time for output.
+ * @var OutputConfig::endTime
+ * @brief End time for output.
+ * @var OutputConfig::interval
+ * @brief Output interval in seconds.
+ * @var OutputConfig::atFirstTime
+ * @brief Output at first time?
+ * @var OutputConfig::actualTime
+ * @brief Next scheduled output time.
+ */
 struct OutputConfig {
   bool requested = false;
   std::optional<DateTime> startTime;

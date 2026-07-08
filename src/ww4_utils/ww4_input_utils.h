@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-21
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  */
 
 #pragma once
@@ -30,6 +30,20 @@
 
 namespace ww4_utils {
 
+/**
+ * @enum InputType
+ * @brief Types of model inputs for time management.
+ * @var InputType::WaterLevels
+ * @brief Water levels input.
+ * @var InputType::Currents
+ * @brief Currents input.
+ * @var InputType::Winds
+ * @brief Winds input.
+ * @var InputType::IceConcentrations
+ * @brief Ice concentrations input.
+ * @var InputType::BottomDepth
+ * @brief Bottom depth input.
+ */
 enum class InputType {
   WaterLevels,
   Currents,
@@ -38,12 +52,40 @@ enum class InputType {
   BottomDepth,
 };
 
+/**
+ * @struct intTimeData
+ * @brief Structure to hold time tags for model inputs.
+ * @var intTimeData::time1
+ * @brief First time tag.
+ * @var intTimeData::time2
+ * @brief Second time tag.
+ * @var intTimeData::maxStep
+ * @brief Maximum model time step.
+ */
 struct intTimeData {
   std::optional<DateTime> time1;
   std::optional<DateTime> time2;
   double maxStep = -1.0;
 };
 
+/**
+ * @struct waveTimeData
+ * @brief Structure to hold model time and time step information.
+ * @var waveTimeData::timeStep
+ * @brief Model time step.
+ * @var waveTimeData::modelTime
+ * @brief Current model time.
+ * @var waveTimeData::waterLevels
+ * @brief Time data for water levels.
+ * @var waveTimeData::currents
+ * @brief Time data for currents.
+ * @var waveTimeData::winds
+ * @brief Time data for winds.
+ * @var waveTimeData::iceConcentrations
+ * @brief Time data for ice concentrations.
+ * @var waveTimeData::bottomDepth
+ * @brief Time data for bottom depth.
+ */
 struct waveTimeData {
   double timeStep = -1.0;
   std::optional<DateTime> modelTime;
@@ -54,6 +96,10 @@ struct waveTimeData {
   intTimeData bottomDepth;
 };
 
+/**
+ * @struct InputUpdateState
+ * @brief Tracking state for input interpolation reporting.
+ */
 struct InputUpdateState {
   std::optional<DateTime> lastWlTime1, lastWlTime2;
   std::optional<DateTime> lastCuTime1, lastCuTime2;

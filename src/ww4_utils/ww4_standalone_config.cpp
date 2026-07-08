@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-02
- * @date Last update : 2026-06-08
+ * @date Last update : 2026-07-07
  */
 
 #include "ww4_utils/ww4_standalone_config.h"
@@ -31,18 +31,6 @@
  * @brief Utilities for WAVEWATCH IV.
  */
 namespace ww4_utils {
-
-/**
- * @struct StandaloneConfig
- * @brief Configuration for the ww4_standalone program.
- * @details Stores the start and end times for the simulation.
- * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
- * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
- * @var StandaloneConfig::startTime
- * @brief Simulation start time.
- * @var StandaloneConfig::endTime
- * @brief Simulation end time.
- */
 
 /**
  * @brief Internal helper to parse a date-time string in "YYYYMMDD HHMMSS"

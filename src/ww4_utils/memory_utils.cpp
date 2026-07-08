@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-02-27
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  */
 
 #include "ww4_utils/memory_utils.h"
@@ -51,20 +51,6 @@ void setMemoryStatusPathForTesting(const char *path) { statusFilePath = path; }
 void resetMemoryStatusPath() noexcept {
   statusFilePath = defaultStatusFilePath;
 }
-
-/**
- * @struct MemoryUsage
- * @brief Represents various memory usage metrics of a process.
- * @details Values are typically in kilobytes (kB).
- * @var MemoryUsage::vmPeak
- * @brief Peak virtual memory size.
- * @var MemoryUsage::vmSize
- * @brief Virtual memory size.
- * @var MemoryUsage::vmHWM
- * @brief Peak resident set size ("High Water Mark").
- * @var MemoryUsage::vmRSS
- * @brief Resident set size.
- */
 
 /**
  * @class MemoryUtils

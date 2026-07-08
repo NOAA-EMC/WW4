@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-10
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  */
 
 #include "ww4_utils/ww4_service.h"
@@ -31,7 +31,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Rahul Mahajan
  * @date Initial, 2026-04-09
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  * @var Radians2Degrees
  * @brief Conversion factor from radians to degrees.
  * @var Degrees2Radians
@@ -69,17 +69,6 @@
  * @brief Utilities for WAVEWATCH IV.
  */
 namespace ww4_utils {
-
-/**
- * @struct Dispersion
- * @brief Structure to hold wave dispersion parameters.
- * @details This structure contains the wavenumber and group velocity
- *          calculated from the dispersion relation.
- * @var Dispersion::k
- * @brief Wavenumber (rad/m).
- * @var Dispersion::cg
- * @brief Group velocity (m/s).
- */
 
 /**
  * @namespace ww4_service

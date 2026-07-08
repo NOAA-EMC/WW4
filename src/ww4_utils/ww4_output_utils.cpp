@@ -15,7 +15,7 @@
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-05-01
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  */
 
 #include "ww4_utils/ww4_output_utils.h"
@@ -27,25 +27,6 @@
  * @brief Utilities for WAVEWATCH IV.
  */
 namespace ww4_utils {
-
-/**
- * @struct OutputConfig
- * @brief Configuration for a specific output type.
- * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
- * @author Contributors: Jules (Agentic AI)
- * @var OutputConfig::requested
- * @brief Is this output requested?
- * @var OutputConfig::startTime
- * @brief Start time for output.
- * @var OutputConfig::endTime
- * @brief End time for output.
- * @var OutputConfig::interval
- * @brief Output interval in seconds.
- * @var OutputConfig::atFirstTime
- * @brief Output at first time?
- * @var OutputConfig::actualTime
- * @brief Next scheduled output time.
- */
 
 /**
  * @brief Assesses and initializes output configurations.

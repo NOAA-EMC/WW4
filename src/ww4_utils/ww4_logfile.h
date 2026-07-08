@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-01
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  * @note Converted from WAVEWATCH III (ww3_shel.F90 and ww3_multi.F90).
  *       Original author: Hendrik L. Tolman.
  */
@@ -34,6 +34,28 @@ namespace ww4_utils {
 
 namespace ww4_logfile {
 
+/**
+ * @struct LogTableData
+ * @brief Data structure for tabular log output tracking.
+ * @var LogTableData::wlUpdated
+ * @brief Water level update flag.
+ * @var LogTableData::cuUpdated
+ * @brief Currents update flag.
+ * @var LogTableData::wiUpdated
+ * @brief Winds update flag.
+ * @var LogTableData::icUpdated
+ * @brief Ice concentrations update flag.
+ * @var LogTableData::bdUpdated
+ * @brief Bottom depth update flag.
+ * @var LogTableData::fieldsPerformed
+ * @brief Gridded fields output flag.
+ * @var LogTableData::pointsPerformed
+ * @brief Point output flag.
+ * @var LogTableData::restartPerformed
+ * @brief Restart file output flag.
+ * @var LogTableData::apiPerformed
+ * @brief API output flag.
+ */
 struct LogTableData {
   bool wlUpdated = false;
   bool cuUpdated = false;

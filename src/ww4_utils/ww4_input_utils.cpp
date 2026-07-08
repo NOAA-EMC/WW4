@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-21
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-07
  */
 
 #include "ww4_utils/ww4_input_utils.h"
@@ -32,56 +32,6 @@
  * @brief Utilities for WAVEWATCH IV.
  */
 namespace ww4_utils {
-
-/**
- * @enum InputType
- * @brief Types of model inputs for time management.
- * @var InputType::WaterLevels
- * @brief Water levels input.
- * @var InputType::Currents
- * @brief Currents input.
- * @var InputType::Winds
- * @brief Winds input.
- * @var InputType::IceConcentrations
- * @brief Ice concentrations input.
- * @var InputType::BottomDepth
- * @brief Bottom depth input.
- */
-
-/**
- * @struct intTimeData
- * @brief Structure to hold time tags for model inputs.
- * @var intTimeData::time1
- * @brief First time tag.
- * @var intTimeData::time2
- * @brief Second time tag.
- * @var intTimeData::maxStep
- * @brief Maximum model time step.
- */
-
-/**
- * @struct waveTimeData
- * @brief Structure to hold model time and time step information.
- * @var waveTimeData::timeStep
- * @brief Model time step.
- * @var waveTimeData::modelTime
- * @brief Current model time.
- * @var waveTimeData::waterLevels
- * @brief Time data for water levels.
- * @var waveTimeData::currents
- * @brief Time data for currents.
- * @var waveTimeData::winds
- * @brief Time data for winds.
- * @var waveTimeData::iceConcentrations
- * @brief Time data for ice concentrations.
- * @var waveTimeData::bottomDepth
- * @brief Time data for bottom depth.
- */
-
-/**
- * @struct InputUpdateState
- * @brief Tracking state for input interpolation reporting.
- */
 
 namespace {
 
