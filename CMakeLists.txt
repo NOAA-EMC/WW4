@@ -12,9 +12,9 @@
 #of the National Weather Service.
 #NWS often uses Generative AI (GenAI) for code development and refactoring. Whenever GenAI is used, NWS requires a full human review of code before it is added to its repositories.
 #@author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
-#@author Contributors : Jules (Agentic AI), Kit Stokes
+#@author Contributors : Jules (Agentic AI), Kit Stokes, Jessica Meixner
 #@date Initial : 2026-07-09
-#@date Last update : 2026-07-09
+#@date Last update : 2026-07-13
 
 cmake_minimum_required(VERSION 3.25)
 
@@ -164,6 +164,8 @@ ww4_add_test(test_ww4_service tests/ww4_utils/L1_test_ww4_service.cpp ww4_utils)
 ww4_add_test(test_ww4_constants tests/ww4_utils/L1_test_ww4_constants.cpp ww4_utils)
 
 # Core tests
+ww4_add_test(test_ww4_standalone tests/ww4_core/L1_test_ww4_standalone.cpp ww4_core)
+target_compile_definitions(test_ww4_standalone PRIVATE STANDALONE_EXE_PATH="${CMAKE_SOURCE_DIR}/exe/ww4_standalone")
 ww4_add_test(test_w4core_init tests/ww4_core/L1_test_w4core_init.cpp ww4_core)
 ww4_add_test(test_w4core_wave tests/ww4_core/L1_test_w4core_wave.cpp ww4_core)
 ww4_add_test(test_w4core_finalize tests/ww4_core/L1_test_w4core_finalize.cpp ww4_core)
