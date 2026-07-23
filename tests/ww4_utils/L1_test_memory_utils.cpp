@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-02-27
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-13
  */
 
 #include "ww4_utils/memory_utils.h"
@@ -92,6 +92,30 @@ TEST(MemoryUtilsTest, MockLargeValues) {
   EXPECT_EQ(usage->vmSize, 70252780120440ULL);
   EXPECT_EQ(usage->vmHWM, 6144ULL);
   EXPECT_EQ(usage->vmRSS, 6144ULL);
+
+  std::remove(mockPath);
+}
+
+TEST(MemoryUtilsTest, ResetMemoryStatusPath) {
+  const char *mockPath = "mock_status_reset.txt";
+  {
+    std::ofstream mockFile(mockPath);
+    mockFile << "VmPeak: 1234 kB\n";
+    mockFile << "VmSize: 1234 kB\n";
+    mockFile << "VmHWM:  1234 kB\n";
+    mockFile << "VmRSS:  1234 kB\n";
+  }
+
+  setMemoryStatusPathForTesting(mockPath);
+  auto usage = MemoryUtils::captureMemoryUsage();
+  ASSERT_TRUE(usage.has_value());
+  EXPECT_EQ(usage->vmPeak, 1234ULL);
+
+  resetMemoryStatusPath();
+  // Now should capture host/self status instead of mock
+  usage = MemoryUtils::captureMemoryUsage();
+  ASSERT_TRUE(usage.has_value());
+  EXPECT_NE(usage->vmPeak, 1234ULL);
 
   std::remove(mockPath);
 }

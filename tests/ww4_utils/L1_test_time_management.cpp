@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-02-27
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-07-13
  */
 
 #include "ww4_utils/time_management.h"
@@ -323,4 +323,14 @@ TEST_F(TimeManagementTest, UnitsParsingErrors) {
 
   TimeManagement::parseUnitsToDateArray("seconds since ", dat, errorCode);
   EXPECT_EQ(errorCode, 1);
+}
+
+TEST_F(TimeManagementTest, ResetTimeManagement) {
+  TimeManagement::setCalendarType(TimeManagement::CalendarType::ThreeSixtyDay);
+  EXPECT_EQ(TimeManagement::getCalendarType(),
+            TimeManagement::CalendarType::ThreeSixtyDay);
+
+  TimeManagement::reset();
+  EXPECT_EQ(TimeManagement::getCalendarType(),
+            TimeManagement::CalendarType::Standard);
 }

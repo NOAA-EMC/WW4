@@ -22,8 +22,8 @@ The filename should be provided without extension.
 NWS often uses Generative AI (GenAI) for code development and refactoring. Whenever GenAI is used, NWS requires a full human review of code before it is added to its repositories.
 @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 @author Contributors: Jules (Agentic AI)
-@date Initial, 2026-03-30
-@date Last Update, 2026-05-26
+@date Initial, 2026-07-09
+@date Last update : 2026-07-09
 """
 
 import argparse
@@ -158,7 +158,13 @@ def find_test_files(root_dir: Path, filename: str) -> List[Path]:
         return []
 
     # Common naming patterns for tests
-    patterns = [f"test_{filename}.cpp", f"{filename}_test.cpp", f"test_{filename}.hpp"]
+    patterns = [
+        f"test_{filename}.cpp",
+        f"{filename}_test.cpp",
+        f"test_{filename}.hpp",
+        f"L1_test_{filename}.cpp",
+        f"L2_test_{filename}.cpp",
+    ]
     matches = []
     for pattern in patterns:
         for path in test_dir.rglob(pattern):

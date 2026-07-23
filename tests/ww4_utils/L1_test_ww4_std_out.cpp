@@ -13,15 +13,17 @@
  * added to its repositories.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
- * @date Initial, 2026-04-01
- * @date Last update : 2026-05-26
+ * @date Initial, 2026-07-09
+ * @date Last update : 2026-07-09
  */
 
+#include "ww4_utils/time_management.h"
 #include "ww4_utils/ww4_std_out.h"
 #include <gtest/gtest.h>
 #include <sstream>
 
 using namespace ww4_utils::ww4_std_out;
+using ww4_utils::DateTime;
 using ww4_utils::MemoryUsage;
 
 TEST(StdOutTest, InitialOutputProgramShell) {
@@ -108,4 +110,18 @@ TEST(StdOutTest, WarnngReporting) {
   std::string output = ss.str();
 
   EXPECT_NE(output.find("WW4 WARNING: Another warning"), std::string::npos);
+}
+
+TEST(StdOutTest, WriteUpdatingFieldAndInterpolation) {
+  std::stringstream ss;
+  writeUpdatingField(ss, "currents");
+  std::string output = ss.str();
+  EXPECT_NE(output.find("    Updating currents"), std::string::npos);
+
+  DateTime t1{20260101, 0.0};
+  DateTime t2{20260101, 10000.0};
+  std::stringstream ss2;
+  writeInterpolationInfo(ss2, t1, t2);
+  std::string output2 = ss2.str();
+  EXPECT_NE(output2.find("      Interpolation from"), std::string::npos);
 }
