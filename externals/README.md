@@ -4,11 +4,19 @@
 
 # External libraries used in WW4
 
-Copies of external libraries used by WW4 are gathered here in the **./externals** directory. We chose to keep copies of these libraries here to allow for off-line development work for WW4.
+External libraries used by WW4 are included as Git submodules in the `./externals` directory:
+- `externals/yaml-cpp` (version 0.8.0) - Configuration file parsing
+- `externals/googletest` (version 1.14.0) - C++ unit testing framework (when testing is enabled)
 
-The libraries are gathered here but are not part of the repository to avoid unnecessary growth of the size of the repository.
+To clone WW4 with external dependencies included, use:
+```bash
+git clone --recursive https://github.com/NOAA-EMC/WW4.git
+```
 
-The libraries and their version used for WW4 are documented `*** add the YAML file for this ***`, and their inclusion in this directory is automated using the `*** add script name ***` in the **./bin** directory of the repository.
+If the repository was cloned without `--recursive`, initialize and update submodules using:
+```bash
+git submodule update --init --recursive
+```
 
 #
 <p align="right">

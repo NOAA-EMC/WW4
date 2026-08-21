@@ -1,8 +1,7 @@
-build/
+build*/
 exe/
 *.o
 ww4_log.txt
-ww4_local_config.cmake
 verify_ww4.py
 test_format
 test_format.cpp
@@ -15,6 +14,3 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Externals
-externals/*
-!externals/README.md

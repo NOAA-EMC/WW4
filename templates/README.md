@@ -4,22 +4,22 @@
 
 # <p align="center"> WAVEWATCH IV<sup> TM</sup> (WW4<sup> TM</sup>) Configuration Templates </p>
 
-This directory contains template files for configuring the WAVEWATCH IV build environment. These templates provide a starting point for users to set up their local compilation environment.
+This directory contains template files for configuring WAVEWATCH IV runtime environments. These templates provide a starting point for users to set up simulation parameters.
 
-## Interactive usage
+## Usage
 
-Users can manually copy the templates from this directory to the desired location (typically the repository root) and modify them as needed.
+Users can copy templates from this directory to the desired working directory (typically the repository root or execution directory) and modify them as needed:
 
-1.  Copy `templates/ww4_compile_config.yaml` to the root directory:
-    ```bash
-    cp templates/ww4_compile_config.yaml ./ww4_compile_config.yaml
-    ```
-2.  Edit `ww4_compile_config.yaml` to specify your compiler and preferred options.
-3.  Copy `templates/ww4_run_config.yaml` to the root directory and modify run-time settings.
+1. Copy `templates/ww4_standalone.yaml` to configure simulation start/end times:
+   ```bash
+   cp templates/ww4_standalone.yaml ./ww4_standalone.yaml
+   ```
+2. Copy `templates/ww4_run_config.yaml` to configure general, physics, forcing, and output settings:
+   ```bash
+   cp templates/ww4_run_config.yaml ./ww4_run_config.yaml
+   ```
 
-## Automatic usage
-
-Build scripts or CI/CD pipelines can use these templates to generate default configurations if a user-specified configuration is not found.
+Note: Runtime YAML configuration files created in the repository root are ignored by Git.
 
 #
 <p align="right">

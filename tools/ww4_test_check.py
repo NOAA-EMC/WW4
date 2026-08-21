@@ -23,16 +23,15 @@ NWS often uses Generative AI (GenAI) for code development and refactoring. Whene
 @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 @author Contributors: Jules (Agentic AI)
 @date Initial, 2026-07-09
-@date Last update : 2026-07-09
+@date Last update : 2026-08-21
 """
 
 import argparse
 import re
 from pathlib import Path
-from typing import List, Set
 
 
-def find_files(root_dir: Path, filename: str) -> List[Path]:
+def find_files(root_dir: Path, filename: str) -> list[Path]:
     """
     Find files matching the filename (without extension) in src and include.
 
@@ -45,7 +44,7 @@ def find_files(root_dir: Path, filename: str) -> List[Path]:
 
     Returns
     -------
-    List[Path]
+    list[Path]
         A list of matching file paths.
     """
     matches = []
@@ -56,12 +55,11 @@ def find_files(root_dir: Path, filename: str) -> List[Path]:
         if not search_dir.exists():
             continue
         for ext in extensions:
-            for path in search_dir.rglob(f"{filename}{ext}"):
-                matches.append(path)
+            matches.extend(list(search_dir.rglob(f"{filename}{ext}")))
     return matches
 
 
-def extract_routines(file_path: Path) -> Set[str]:
+def extract_routines(file_path: Path) -> set[str]:
     """
     Extract routine names (functions/methods) from a C++ file.
 
@@ -72,13 +70,13 @@ def extract_routines(file_path: Path) -> Set[str]:
 
     Returns
     -------
-    Set[str]
+    set[str]
         A set of routine names found in the file.
     """
     routines = set()
     try:
         content = file_path.read_text()
-    except Exception as e:
+    except OSError as e:
         print(f"Error reading {file_path}: {e}")
         return routines
 
@@ -137,7 +135,7 @@ def extract_routines(file_path: Path) -> Set[str]:
     return routines
 
 
-def find_test_files(root_dir: Path, filename: str) -> List[Path]:
+def find_test_files(root_dir: Path, filename: str) -> list[Path]:
     """
     Find test files matching the filename in tests.
 
@@ -150,7 +148,7 @@ def find_test_files(root_dir: Path, filename: str) -> List[Path]:
 
     Returns
     -------
-    List[Path]
+    list[Path]
         A list of matching test file paths.
     """
     test_dir = root_dir / "tests"
@@ -167,25 +165,24 @@ def find_test_files(root_dir: Path, filename: str) -> List[Path]:
     ]
     matches = []
     for pattern in patterns:
-        for path in test_dir.rglob(pattern):
-            matches.append(path)
+        matches.extend(list(test_dir.rglob(pattern)))
     return matches
 
 
-def check_routines_in_tests(routines: Set[str], test_files: List[Path]) -> Set[str]:
+def check_routines_in_tests(routines: set[str], test_files: list[Path]) -> set[str]:
     """
     Check which routines are mentioned in the test files.
 
     Parameters
     ----------
-    routines : Set[str]
+    routines : set[str]
         A set of routine names to check.
-    test_files : List[Path]
+    test_files : list[Path]
         A list of test file paths to search in.
 
     Returns
     -------
-    Set[str]
+    set[str]
         A set of routines found in the tests.
     """
     covered = set()
@@ -196,7 +193,7 @@ def check_routines_in_tests(routines: Set[str], test_files: List[Path]) -> Set[s
     for test_file in test_files:
         try:
             test_contents += test_file.read_text() + "\n"
-        except Exception:
+        except OSError:
             pass
 
     for routine in routines:
@@ -259,7 +256,7 @@ def main() -> None:
         print("\nRoutine Coverage:")
         print(f"{'Routine Name':<30} {'Status':<10}")
         print("-" * 40)
-        for routine in sorted(list(routines)):
+        for routine in sorted(routines):
             status = "[OK]" if routine in covered else "[MISSING]"
             print(f"{routine:<30} {status}")
 

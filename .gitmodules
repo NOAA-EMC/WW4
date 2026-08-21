@@ -1,0 +1,6 @@
+[submodule "externals/yaml-cpp"]
+	path = externals/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "externals/googletest"]
+	path = externals/googletest
+	url = https://github.com/google/googletest.git

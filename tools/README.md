@@ -4,64 +4,40 @@
 
 # <p align="center"> WW4 tools directory </p>
 
-Copies of tools created for  WW4 are gathered here in the tools/ directory. These are the ‘microtools` to work the repository.  ‘Macrotools’ to help develop WW4 applications, for instance to manipulate grids, are gathered in their own repositories.
+Copies of tools created for WAVEWATCH IV (WW4) are gathered here in the `tools/` directory. These are the microtools to support repository management and testing. Macrotools to help develop WW4 applications, for instance to manipulate grids, are gathered in their own repositories.
 
-The tools gathered here are documented in the [WW4 Tools](https://github.com/NOAA-EMC/WW4/wiki/Tools.md)  page of the WW4 wiki page.
+The tools gathered here are documented on the [WW4 Tools](https://github.com/NOAA-EMC/WW4/wiki/Tools.md) page of the WW4 wiki.
 
-# Usage
+# Compilation and Setup
 
-WAVEWATCH IV provides multiple ways to set up and build the project, ranging from interactive tools to manual configuration.
+WAVEWATCH IV uses a standard CMake build system. Build configuration is handled locally in each repository clone using CMake options and standard environment variables. The build system does not modify the user's interactive environment or shell profile scripts.
 
-## Interactive Usage (Recommended)
-
-Run the setup tool to interactively configure your active clone and compiler settings:
-
-### 1. Setup
+## Building WAVEWATCH IV
 
 ```bash
-./ww4_setup
-```
-This tool will:
-- Identify and set the active WAVEWATCH IV clone in `~/.ww4_config.yaml`.
-- Detect available C++ compilers on your system.
-- Configure compilation flags for either development or maximum optimization in `ww4_compile_config.yaml`.
+# Configure build
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
-### 2. Compilation
-
-Once configured, you can compile WAVEWATCH IV using standard CMake:
-
-```bash
-cmake -B build
+# Build executables and libraries
 cmake --build build
 ```
-The `ww4_setup` tool generates a `ww4_local_config.cmake` file that stores your selected compiler and flags, which is automatically included by `CMakeLists.txt`.
 
-## Manual Usage
-
-If you prefer to configure the tools manually, follow these steps:
-
-### 1. Setup
-
-Copy the template configuration file to the repository root:
+For NOAA operational builds without testing components:
 ```bash
-cp templates/ww4_compile_config.yaml ./ww4_compile_config.yaml
+cmake -B build_ops -S . -DWW4_ENABLE_TESTING=OFF
+cmake --build build_ops
 ```
-Then, edit `ww4_compile_config.yaml` to specify your compiler and preferred options.
 
-### 2. Compilation
-
-Configure and build with CMake as shown above.
-
-## Developer Tools
+# Developer Tools
 
 WAVEWATCH IV provides additional tools to support developers during the coding process.
 
-### Test Availability Check
+## Test Availability Check
 
 To check if unit tests are available for a specific file and its identified routines:
 
 ```bash
-./ww4_test_check --file <filename>
+./tools/ww4_test_check --file <filename>
 ```
 *Note: The filename should be provided without extension (e.g., `time_management`).*
 
