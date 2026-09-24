@@ -407,43 +407,25 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
     if (const auto node = config_node["spectral_space"]) {
       if (node["num_directions"]) {
         config.spectralSpace.numDirections = node["num_directions"].as<int>();
-      } else if (node["n_directions"]) {
-        config.spectralSpace.numDirections = node["n_directions"].as<int>();
-      } else if (node["directions"]) {
-        config.spectralSpace.numDirections = node["directions"].as<int>();
       }
 
       if (node["num_frequencies"]) {
         config.spectralSpace.numFrequencies = node["num_frequencies"].as<int>();
-      } else if (node["n_frequencies"]) {
-        config.spectralSpace.numFrequencies = node["n_frequencies"].as<int>();
-      } else if (node["frequencies"]) {
-        config.spectralSpace.numFrequencies = node["frequencies"].as<int>();
       }
 
       if (node["freq_increment_factor"]) {
         config.spectralSpace.freqIncrementFactor =
             node["freq_increment_factor"].as<double>();
-      } else if (node["frequency_increment_factor"]) {
-        config.spectralSpace.freqIncrementFactor =
-            node["frequency_increment_factor"].as<double>();
-      } else if (node["xfr"]) {
-        config.spectralSpace.freqIncrementFactor = node["xfr"].as<double>();
       }
 
       if (node["first_frequency"]) {
         config.spectralSpace.firstFrequency =
             node["first_frequency"].as<double>();
-      } else if (node["fr1"]) {
-        config.spectralSpace.firstFrequency = node["fr1"].as<double>();
       }
 
       if (node["first_direction_offset"]) {
         config.spectralSpace.firstDirectionOffset =
             node["first_direction_offset"].as<double>();
-      } else if (node["direction_offset"]) {
-        config.spectralSpace.firstDirectionOffset =
-            node["direction_offset"].as<double>();
       }
     }
 
