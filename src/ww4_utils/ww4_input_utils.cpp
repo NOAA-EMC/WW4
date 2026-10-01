@@ -170,11 +170,13 @@ void updateHomogeneousInputCycling(
     }
   }
 
+  // --- time2 check ----------------------------------------------------------
   if (data.time2.has_value() &&
       TimeManagement::differenceInSeconds(modelTime, *data.time2) < 0.0) {
     data.time2 = endTime;
   }
 
+  // --- maxStep --------------------------------------------------------------
   if (data.time2.has_value()) {
     data.maxStep = TimeManagement::differenceInSeconds(modelTime, *data.time2);
   } else {

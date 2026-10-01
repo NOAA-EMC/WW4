@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-10
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-10-01
  */
 
 #include "ww4_utils/ww4_service.h"
@@ -34,9 +34,13 @@ Dispersion wavenumber_Beji(double omega, double h) {
     return {0.0, 0.0};
   }
 
+  // Deep water KH0 = omega^2 * h / g
   double kh0 = (omega * omega * h) / ww4_constants::GRAV;
+
+  // Intermediate term for Beji's improved Eckart formula
   double tmp = 1.55 + 1.3 * kh0 + 0.216 * kh0 * kh0;
 
+  // Calculate KH using the approximation
   double kh =
       kh0 *
       (1.0 + std::pow(kh0, 1.09) *
@@ -70,16 +74,21 @@ double JONSWAP_5p(double f, double fp, double alpha, double gamma, double siga,
 
 // --- dist_Haversine ---------------------------------------------------------
 double dist_Haversine(double lon1, double lat1, double lon2, double lat2) {
+
+  // Compute differences in latitude and longitude in radians
   double dlat = (lat2 - lat1) * ww4_constants::Degrees2Radians;
   double dlon = (lon2 - lon1) * ww4_constants::Degrees2Radians;
 
+  // Compute the haversine of the central angle
   double a = std::pow(std::sin(dlat / 2.0), 2) +
              std::cos(lat1 * ww4_constants::Degrees2Radians) *
                  std::cos(lat2 * ww4_constants::Degrees2Radians) *
                  std::pow(std::sin(dlon / 2.0), 2);
 
+  // Compute the angular distance (c), ensuring no precision issues
   double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(std::max(0.0, 1.0 - a)));
 
+  // Return the spherical distance in radians
   return c;
 }
 
