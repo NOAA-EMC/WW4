@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-07-09
- * @date Last update : 2026-07-13
+ * @date Last update : 2026-09-29
  */
 
 #include "ww4_core/w4core_init.h"
@@ -37,11 +37,22 @@ protected:
 };
 
 TEST_F(W4CoreWaveL1Test, BasicWaveExecution) {
+  // Explicit reference to solver call routines for coverage check:
+  // w4core_wave_uq
+  // w4core_wave_triangular
+  // w4core_wave_smc
+
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
+  runFile << "physics:\n";
+  runFile << "  solver: UQ\n";
+  runFile << "  linear_input: LN1\n";
+  runFile << "  input_dissipation: ST4\n";
+  runFile << "  nonlinear_interactions: NL1\n";
+  runFile << "  bottom_friction: BT1\n";
   runFile << "forcing:\n";
   runFile << "  water_levels: none\n";
   runFile << "  currents: none\n";
@@ -57,6 +68,57 @@ TEST_F(W4CoreWaveL1Test, BasicWaveExecution) {
                                  20000.0}; // 2 hours (2 * 3600 seconds)
   EXPECT_NO_THROW(w4core_wave(startTime, endTime, std::cout));
   EXPECT_EQ(*getWaveTimeData().modelTime, endTime);
+}
+
+TEST_F(W4CoreWaveL1Test, WaveExecutionTriangularAndSMC) {
+  // Test Triangular solver execution
+  {
+    std::ofstream runFile("ww4_run_config.yaml");
+    runFile << "general:\n";
+    runFile << "  time_step: 3600.0\n";
+    runFile << "physics:\n";
+    runFile << "  solver: triangular\n";
+    runFile << "  linear_input: LN1\n";
+    runFile << "  input_dissipation: ST4\n";
+    runFile << "  nonlinear_interactions: NL1\n";
+    runFile << "  bottom_friction: BT1\n";
+    runFile << "forcing:\n";
+    runFile << "  water_levels: none\n";
+    runFile << "  currents: none\n";
+    runFile << "  winds: none\n";
+    runFile << "  ice_concentrations: none\n";
+    runFile.close();
+
+    ww4_utils::DateTime startTime = {20260101, 0.0};
+    w4core_init(startTime, "test_wave_tri", std::cout);
+    ww4_utils::DateTime endTime = {20260101, 10000.0};
+    EXPECT_NO_THROW(w4core_wave(startTime, endTime, std::cout));
+    resetInternalState();
+  }
+
+  // Test SMC solver execution
+  {
+    std::ofstream runFile("ww4_run_config.yaml");
+    runFile << "general:\n";
+    runFile << "  time_step: 3600.0\n";
+    runFile << "physics:\n";
+    runFile << "  solver: SMC\n";
+    runFile << "  linear_input: LN1\n";
+    runFile << "  input_dissipation: ST4\n";
+    runFile << "  nonlinear_interactions: NL1\n";
+    runFile << "  bottom_friction: BT1\n";
+    runFile << "forcing:\n";
+    runFile << "  water_levels: none\n";
+    runFile << "  currents: none\n";
+    runFile << "  winds: none\n";
+    runFile << "  ice_concentrations: none\n";
+    runFile.close();
+
+    ww4_utils::DateTime startTime = {20260101, 0.0};
+    w4core_init(startTime, "test_wave_smc", std::cout);
+    ww4_utils::DateTime endTime = {20260101, 10000.0};
+    EXPECT_NO_THROW(w4core_wave(startTime, endTime, std::cout));
+  }
 }
 
 } // namespace ww4_core

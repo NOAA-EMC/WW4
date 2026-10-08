@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-07-13
- * @date Last update : 2026-07-13
+ * @date Last update : 2026-09-29
  */
 
 #include <cstdlib>
@@ -81,6 +81,11 @@ TEST_F(WW4StandaloneL1Test, ValidConfigSucceeds) {
           << "  time_step: 3600.0\n"
           << "physics:\n"
           << "  dry_run: \"no\"\n"
+          << "  solver: \"UQ\"\n"
+          << "  linear_input: \"LN1\"\n"
+          << "  input_dissipation: \"ST4\"\n"
+          << "  nonlinear_interactions: \"NL1\"\n"
+          << "  bottom_friction: \"BT1\"\n"
           << "forcing:\n"
           << "  bottom_depth: \"from_grid\"\n"
           << "  water_levels: \"none\"\n"

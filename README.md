@@ -20,7 +20,25 @@ The only other file that could be construed as “documentation” in the home d
 
 WAVEWATCH IV uses a standard CMake build system (v3.25+). All compilation is local to the active repository clone. The build process does not modify the user's interactive shell environment or profile scripts.
 
-### 1. Setting up the Compile Environment
+### 1. Cloning the Repository and Git Submodules
+
+WAVEWATCH IV treats third-party dependencies (`yaml-cpp` and `googletest`) as Git submodules located within the `externals/` directory rather than requiring system-installed packages or external downloads:
+- `externals/yaml-cpp` (version 0.8.0) - Configuration file parsing
+- `externals/googletest` (version 1.14.0) - C++ unit testing framework (included when `WW4_ENABLE_TESTING=ON`)
+
+CMake integrates these submodules directly into the build system using `add_subdirectory`, building them in-tree from source. This ensures self-contained, reproducible, and offline-friendly builds without external system library requirements.
+
+When cloning the repository, include submodules using:
+```bash
+git clone --recursive https://github.com/NOAA-EMC/WW4.git
+```
+
+If the repository was already cloned without `--recursive`, initialize and update the submodules using:
+```bash
+git submodule update --init --recursive
+```
+
+### 2. Setting up the Compile Environment
 
 You can specify the C++ compiler either by exporting the `CXX` environment variable or by passing `-DCMAKE_CXX_COMPILER` directly to CMake, depending on the target system hardware and software configuration.
 
@@ -52,7 +70,7 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake -B build -S . -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++ -DCMAKE_BUILD_TYPE=Release
 ```
 
-### 2. Compiler and Build Options
+### 3. Compiler and Build Options
 
 WW4 supports standard CMake build configuration flags:
 
@@ -75,7 +93,7 @@ WW4 supports standard CMake build configuration flags:
   cmake --build build_ops
   ```
 
-### 3. Building the Project
+### 4. Building the Project
 
 Standard development build (includes tests):
 ```bash
@@ -86,7 +104,7 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-### 4. Operational Builds (Disabling Testing)
+### 5. Operational Builds (Disabling Testing)
 
 For operational environments, testing dependencies and test executables can be completely disabled using the `-DWW4_ENABLE_TESTING=OFF` flag:
 ```bash
@@ -95,7 +113,7 @@ cmake --build build_ops
 ```
 When `WW4_ENABLE_TESTING=OFF`, GoogleTest dependencies and test targets are completely skipped during build configuration and execution.
 
-### 5. Cleaning Build Artifacts
+### 6. Cleaning Build Artifacts
 
 To remove compiled object files, static libraries, and executables (including unit test executables located in `build/bin/`) generated during a build:
 ```bash
@@ -110,23 +128,6 @@ rm -rf build
 
 # Remove files in standalone executable directory if present
 rm -rf exe/*
-```
-
-### 6. Git Submodules for External Dependencies
-
-WAVEWATCH IV treats third-party dependencies (`yaml-cpp` and `googletest`) as Git submodules located within the `externals/` directory rather than requiring system-installed packages or external downloads:
-- `externals/yaml-cpp` (version 0.8.0) - Configuration file parsing
-- `externals/googletest` (version 1.14.0) - C++ unit testing framework (included when `WW4_ENABLE_TESTING=ON`)
-
-CMake integrates these submodules directly into the build system using `add_subdirectory`, building them in-tree from source. This ensures self-contained, reproducible, and offline-friendly builds without external system library requirements.
-
-When cloning the repository, initialize submodules using:
-```bash
-git clone --recursive https://github.com/NOAA-EMC/WW4.git
-```
-Or if already cloned, initialize and update submodules using:
-```bash
-git submodule update --init --recursive
 ```
 
 # 

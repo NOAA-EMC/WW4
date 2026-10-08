@@ -26,7 +26,7 @@ To check if unit tests are available for a specific file and its identified rout
 *Note: The filename should be provided without extension (e.g., `time_management`).*
 
 This tool will:
-- Identify source files in `src/` and `include/`.
+- Identify source files in `src/`.
 - Isolate user-defined routines (functions and methods).
 - Check the `tests/` directory for corresponding unit tests.
 - Report the test coverage status for each identified routine.

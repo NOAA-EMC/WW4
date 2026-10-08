@@ -50,6 +50,12 @@ TEST_F(W4CoreWaveOutputTest, ReportsApiOutputStatus) {
     runFile << "general:\n";
     runFile << "  calendar_type: Standard\n";
     runFile << "  time_step: 3600.0\n";
+    runFile << "physics:\n";
+    runFile << "  solver: UQ\n";
+    runFile << "  linear_input: LN1\n";
+    runFile << "  input_dissipation: ST4\n";
+    runFile << "  nonlinear_interactions: NL1\n";
+    runFile << "  bottom_friction: BT1\n";
     runFile << "forcing:\n";
     runFile << "  water_levels: none\n";
     runFile << "  currents: none\n";
@@ -79,6 +85,12 @@ TEST_F(W4CoreWaveOutputTest, ReportsApiOutputStatus) {
     runFile << "general:\n";
     runFile << "  calendar_type: Standard\n";
     runFile << "  time_step: 3600.0\n";
+    runFile << "physics:\n";
+    runFile << "  solver: UQ\n";
+    runFile << "  linear_input: LN1\n";
+    runFile << "  input_dissipation: ST4\n";
+    runFile << "  nonlinear_interactions: NL1\n";
+    runFile << "  bottom_friction: BT1\n";
     runFile << "forcing:\n";
     runFile << "  water_levels: none\n";
     runFile << "  currents: none\n";
@@ -106,6 +118,12 @@ TEST_F(W4CoreWaveOutputTest, DoesNotReportBottomDepthFromGrid) {
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
+  runFile << "physics:\n";
+  runFile << "  solver: UQ\n";
+  runFile << "  linear_input: LN1\n";
+  runFile << "  input_dissipation: ST4\n";
+  runFile << "  nonlinear_interactions: NL1\n";
+  runFile << "  bottom_friction: BT1\n";
   runFile << "forcing:\n";
   runFile << "  water_levels: none\n";
   runFile << "  currents: none\n";

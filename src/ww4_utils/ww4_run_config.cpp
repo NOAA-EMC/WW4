@@ -17,7 +17,7 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-10-01
  */
 
 #include "ww4_utils/ww4_run_config.h"
@@ -220,23 +220,24 @@ void echoHomogeneousData(const std::vector<HomogeneousDataPoint> &processed,
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-10-01
  */
 void reportOutput(const OutputConfig &oc, const std::string_view label,
                   std::ostream &os) {
   if (oc.requested) {
     os << "\n     " << label << " output" << std::endl;
     if (label != "API") {
-      os << "        Interval          : " << oc.interval << " s" << std::endl;
-      os << "        At first time     : " << (oc.atFirstTime ? "yes" : "no")
+      os << "        Interval              : " << oc.interval << " s"
          << std::endl;
+      os << "        At first time         : "
+         << (oc.atFirstTime ? "yes" : "no") << std::endl;
     }
     if (oc.startTime) {
-      os << "        Start time        : "
+      os << "        Start time            : "
          << TimeManagement::toFormattedString(*oc.startTime) << std::endl;
     }
     if (oc.endTime) {
-      os << "        End time          : "
+      os << "        End time              : "
          << TimeManagement::toFormattedString(*oc.endTime) << std::endl;
     }
   } else {
@@ -342,6 +343,60 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
       }
       if (node["source_terms"]) {
         config.sourceTerms = (node["source_terms"].as<std::string>() == "yes");
+      }
+      if (node["solver"]) {
+        const auto solverStr = node["solver"].as<std::string>();
+        if (solverStr == "UQ") {
+          config.solver = SolverType::UQ;
+        } else if (solverStr == "triangular") {
+          config.solver = SolverType::Triangular;
+        } else if (solverStr == "SMC") {
+          config.solver = SolverType::SMC;
+        }
+      }
+      if (node["input_dissipation"]) {
+        const auto val = node["input_dissipation"].as<std::string>();
+        if (val == "none") {
+          config.inputDissipation = InputDissipationScheme::DoNotUse;
+        } else if (val == "ST1") {
+          config.inputDissipation = InputDissipationScheme::ST1;
+        } else if (val == "ST2") {
+          config.inputDissipation = InputDissipationScheme::ST2;
+        } else if (val == "ST4") {
+          config.inputDissipation = InputDissipationScheme::ST4;
+        } else if (val == "ST6") {
+          config.inputDissipation = InputDissipationScheme::ST6;
+        }
+      }
+      if (node["nonlinear_interactions"]) {
+        const auto val = node["nonlinear_interactions"].as<std::string>();
+        if (val == "none") {
+          config.nonlinearInteractions = NonlinearScheme::DoNotUse;
+        } else if (val == "NL1") {
+          config.nonlinearInteractions = NonlinearScheme::NL1;
+        } else if (val == "NL2") {
+          config.nonlinearInteractions = NonlinearScheme::NL2;
+        } else if (val == "NL3") {
+          config.nonlinearInteractions = NonlinearScheme::NL3;
+        }
+      }
+      if (node["linear_input"]) {
+        const auto val = node["linear_input"].as<std::string>();
+        if (val == "none") {
+          config.linearInput = LinearInputScheme::DoNotUse;
+        } else if (val == "LN1") {
+          config.linearInput = LinearInputScheme::LN1;
+        }
+      }
+      if (node["bottom_friction"]) {
+        const auto val = node["bottom_friction"].as<std::string>();
+        if (val == "none") {
+          config.bottomFriction = BottomFrictionScheme::DoNotUse;
+        } else if (val == "BT1") {
+          config.bottomFriction = BottomFrictionScheme::BT1;
+        } else if (val == "BT4") {
+          config.bottomFriction = BottomFrictionScheme::BT4;
+        }
       }
     }
 
@@ -466,14 +521,31 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
     }
 
     // === Mandatory fields check ==============================================
-    if (config.waterLevels == InputFieldOption::Undefined ||
+    if (config.solver == SolverType::Undefined ||
+        config.inputDissipation == InputDissipationScheme::Undefined ||
+        config.nonlinearInteractions == NonlinearScheme::Undefined ||
+        config.linearInput == LinearInputScheme::Undefined ||
+        config.bottomFriction == BottomFrictionScheme::Undefined ||
+        config.waterLevels == InputFieldOption::Undefined ||
         config.currents == InputFieldOption::Undefined ||
         config.winds == InputFieldOption::Undefined ||
         config.iceConcentrations == InputFieldOption::Undefined ||
         config.bottomDepth == InputFieldOption::Undefined) {
-      os << "WW4 ERROR: Mandatory model input field(s) missing or invalid "
+      os << "WW4 ERROR: Mandatory model configuration option(s) missing or "
+            "invalid "
             "in configuration."
          << std::endl;
+      if (config.solver == SolverType::Undefined)
+        os << "   Missing/invalid: physics -> solver" << std::endl;
+      if (config.inputDissipation == InputDissipationScheme::Undefined)
+        os << "   Missing/invalid: physics -> input_dissipation" << std::endl;
+      if (config.nonlinearInteractions == NonlinearScheme::Undefined)
+        os << "   Missing/invalid: physics -> nonlinear_interactions"
+           << std::endl;
+      if (config.linearInput == LinearInputScheme::Undefined)
+        os << "   Missing/invalid: physics -> linear_input" << std::endl;
+      if (config.bottomFriction == BottomFrictionScheme::Undefined)
+        os << "   Missing/invalid: physics -> bottom_friction" << std::endl;
       if (config.waterLevels == InputFieldOption::Undefined)
         os << "   Missing/invalid: forcing -> water_levels" << std::endl;
       if (config.currents == InputFieldOption::Undefined)
@@ -485,6 +557,8 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
       if (config.bottomDepth == InputFieldOption::Undefined)
         os << "   Missing/invalid: forcing -> bottom_depth" << std::endl;
 
+      // An explanatory comment line must precede the first use of '__FILE__'
+      // and '__LINE__' Output error and terminate execution
       ww4_std_out::extcde(1, os, "Missing or invalid mandatory fields.",
                           __FILE__, __LINE__);
     }
@@ -541,10 +615,10 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-10-01
  */
 void reportRunConfig(const RunConfig &config, std::ostream &os) {
-  os << "\n  Configuration settings :" << std::endl;
+  os << "\n  General settings :" << std::endl;
 
   std::string calType = "Standard";
   if (config.calendarType == TimeManagement::CalendarType::NoLeap) {
@@ -554,11 +628,11 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
     calType = "ThreeSixtyDay";
   }
 
-  os << "     Calendar type        : " << calType << std::endl;
-  os << "     Screen output        : " << (config.produceStdOut ? "yes" : "no")
-     << std::endl;
-  os << "     Log file             : " << (config.produceLogFile ? "yes" : "no")
-     << std::endl;
+  os << "\n     Calendar type            : " << calType << std::endl;
+  os << "     Screen output            : "
+     << (config.produceStdOut ? "yes" : "no") << std::endl;
+  os << "     Log file                 : "
+     << (config.produceLogFile ? "yes" : "no") << std::endl;
 
   std::string echoStr = "summary";
   if (config.echoHomInput == EchoOption::None) {
@@ -566,7 +640,7 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
   } else if (config.echoHomInput == EchoOption::Full) {
     echoStr = "full";
   }
-  os << "     Echo input           : " << echoStr << std::endl;
+  os << "     Echo input               : " << echoStr << std::endl;
 
   std::string screenStr = "full";
   if (config.screenOutputLevel == ScreenOutputLevel::None) {
@@ -574,7 +648,7 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
   } else if (config.screenOutputLevel == ScreenOutputLevel::Summary) {
     screenStr = "summary";
   }
-  os << "     Screen output level  : " << screenStr << std::endl;
+  os << "     Screen output level      : " << screenStr << std::endl;
 
   const bool isConventional = !config.dryRun && config.propagateX &&
                               config.propagateY && config.propagateTheta &&
@@ -583,65 +657,122 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
   if (isConventional) {
     os << "     Conventional model run" << std::endl;
   } else {
-    os << "     Unconventional model run" << std::endl;
+    os << "\n     Unconventional model run" << std::endl;
     if (config.dryRun) {
       os << "        Dry run" << std::endl;
     } else {
-      os << "        Propagate X       : " << (config.propagateX ? "yes" : "no")
-         << std::endl;
-      os << "        Propagate Y       : " << (config.propagateY ? "yes" : "no")
-         << std::endl;
-      os << "        Propagate Theta   : "
+      os << "        Propagate X           : "
+         << (config.propagateX ? "yes" : "no") << std::endl;
+      os << "        Propagate Y           : "
+         << (config.propagateY ? "yes" : "no") << std::endl;
+      os << "        Propagate Theta       : "
          << (config.propagateTheta ? "yes" : "no") << std::endl;
-      os << "        Propagate K       : " << (config.propagateK ? "yes" : "no")
-         << std::endl;
-      os << "        Source terms      : "
+      os << "        Propagate K           : "
+         << (config.propagateK ? "yes" : "no") << std::endl;
+      os << "        Source terms          : "
          << (config.sourceTerms ? "yes" : "no") << std::endl;
     }
   }
 
-  os << "     Time step            : " << config.timeStep << " s" << std::endl;
+  os << "\n  Configuration settings :" << std::endl;
 
-  os << "\n     Spectral space parameters :" << std::endl;
-  os << "        Number of directions     : "
+  std::string solverStr = "undefined";
+  if (config.solver == SolverType::UQ) {
+    solverStr = "UQ (Ultimate Quickest)";
+  } else if (config.solver == SolverType::Triangular) {
+    solverStr = "triangular (unstructured grid)";
+  } else if (config.solver == SolverType::SMC) {
+    solverStr = "SMC (Spherical Multiple-Cell)";
+  }
+  os << "\n     Solver scheme            : " << solverStr << std::endl;
+
+  std::string lnStr = "undefined";
+  if (config.linearInput == LinearInputScheme::DoNotUse) {
+    lnStr = "none";
+  } else if (config.linearInput == LinearInputScheme::LN1) {
+    lnStr = "LN1 (Cavaleri and Rizzoli 1981)";
+  }
+  os << "\n     Linear input             : " << lnStr << std::endl;
+
+  std::string inputDissStr = "undefined";
+  if (config.inputDissipation == InputDissipationScheme::DoNotUse) {
+    inputDissStr = "none";
+  } else if (config.inputDissipation == InputDissipationScheme::ST1) {
+    inputDissStr = "ST1 (WAM 3)";
+  } else if (config.inputDissipation == InputDissipationScheme::ST2) {
+    inputDissStr = "ST2 (Tolman and Chalikov 1996)";
+  } else if (config.inputDissipation == InputDissipationScheme::ST4) {
+    inputDissStr = "ST4 (Ardhuin et al. 2010)";
+  } else if (config.inputDissipation == InputDissipationScheme::ST6) {
+    inputDissStr = "ST6 (Zieger et al. 2015)";
+  }
+  os << "     Input and dissipation    : " << inputDissStr << std::endl;
+
+  std::string nlStr = "undefined";
+  if (config.nonlinearInteractions == NonlinearScheme::DoNotUse) {
+    nlStr = "none";
+  } else if (config.nonlinearInteractions == NonlinearScheme::NL1) {
+    nlStr = "NL1 (Discrete Interaction Approximation)";
+  } else if (config.nonlinearInteractions == NonlinearScheme::NL2) {
+    nlStr = "NL2 (Exact interaction)";
+  } else if (config.nonlinearInteractions == NonlinearScheme::NL3) {
+    nlStr = "NL3 (Generalized Multiple DIA)";
+  }
+  os << "     Nonlinear interactions   : " << nlStr << std::endl;
+
+  std::string btStr = "undefined";
+  if (config.bottomFriction == BottomFrictionScheme::DoNotUse) {
+    btStr = "none";
+  } else if (config.bottomFriction == BottomFrictionScheme::BT1) {
+    btStr = "BT1 (JONSWAP)";
+  } else if (config.bottomFriction == BottomFrictionScheme::BT4) {
+    btStr = "BT4 (SHOWEX)";
+  }
+  os << "     Bottom friction          : " << btStr << std::endl;
+
+  os << "\n     Time step                : " << config.timeStep << " s"
+     << std::endl;
+
+  os << "\n  Spectral space parameters :" << std::endl;
+  os << "\n     Number of directions     : "
      << config.spectralSpace.numDirections << std::endl;
-  os << "        Number of frequencies    : "
+  os << "     Number of frequencies    : "
      << config.spectralSpace.numFrequencies << std::endl;
-  os << "        Freq increment factor    : "
+  os << "     Freq increment factor    : "
      << config.spectralSpace.freqIncrementFactor << std::endl;
-  os << "        First frequency          : "
+  os << "     First frequency          : "
      << config.spectralSpace.firstFrequency << " Hz" << std::endl;
-  os << "        First direction offset   : "
+  os << "     First direction offset   : "
      << config.spectralSpace.firstDirectionOffset
      << " (fraction of directional increment)" << std::endl;
 
   os << "\n  Model input:" << std::endl;
 
-  os << "     Bottom depth         : "
+  os << "\n     Bottom depth             : "
      << inputOptionToString(config.bottomDepth) << std::endl;
   if (config.bottomDepth == InputFieldOption::Homogeneous) {
     echoHomogeneousData(config.homogeneousBottomDepth, "bottom depth",
                         config.echoHomInput, os);
   }
-  os << "     Water levels         : "
+  os << "     Water levels             : "
      << inputOptionToString(config.waterLevels) << std::endl;
   if (config.waterLevels == InputFieldOption::Homogeneous) {
     echoHomogeneousData(config.homogeneousWaterLevels, "water levels",
                         config.echoHomInput, os);
   }
-  os << "     Currents             : " << inputOptionToString(config.currents)
-     << std::endl;
+  os << "     Currents                 : "
+     << inputOptionToString(config.currents) << std::endl;
   if (config.currents == InputFieldOption::Homogeneous) {
     echoHomogeneousData(config.homogeneousCurrents, "currents",
                         config.echoHomInput, os);
   }
-  os << "     Winds                : " << inputOptionToString(config.winds)
+  os << "     Winds                    : " << inputOptionToString(config.winds)
      << std::endl;
   if (config.winds == InputFieldOption::Homogeneous) {
     echoHomogeneousData(config.homogeneousWinds, "winds", config.echoHomInput,
                         os);
   }
-  os << "     Ice concentrations   : "
+  os << "     Ice concentrations       : "
      << inputOptionToString(config.iceConcentrations) << std::endl;
   if (config.iceConcentrations == InputFieldOption::Homogeneous) {
     echoHomogeneousData(config.homogeneousIceConcentrations,

@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-07-09
- * @date Last update : 2026-07-13
+ * @date Last update : 2026-09-29
  */
 
 #include "ww4_core/w4core_finalize.h"
@@ -42,6 +42,12 @@ TEST_F(W4CoreFinalizeL1Test, BasicFinalize) {
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
+  runFile << "physics:\n";
+  runFile << "  solver: UQ\n";
+  runFile << "  linear_input: LN1\n";
+  runFile << "  input_dissipation: ST4\n";
+  runFile << "  nonlinear_interactions: NL1\n";
+  runFile << "  bottom_friction: BT1\n";
   runFile << "forcing:\n";
   runFile << "  water_levels: none\n";
   runFile << "  currents: none\n";

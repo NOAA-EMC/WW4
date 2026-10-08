@@ -62,6 +62,12 @@ TEST_F(InterpolationOutputTest, RedundantOutputCheck) {
   writeYaml(R"(general:
   calendar_type: Standard
   time_step: 3600.0
+physics:
+  solver: UQ
+  linear_input: LN1
+  input_dissipation: ST4
+  nonlinear_interactions: NL1
+  bottom_friction: BT1
 forcing:
   water_levels: none
   currents: none

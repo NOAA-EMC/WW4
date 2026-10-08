@@ -5,7 +5,7 @@
 
 @file ww4_test_check.py
 @brief A tool to check if unit tests are available for a specific file.
-@details This tool searches for source files in src/ and include/ matching a
+@details This tool searches for source files in src/ matching a
          given name, identifies user-defined routines, and checks if
          corresponding tests exist in tests/.
 
@@ -23,7 +23,7 @@ NWS often uses Generative AI (GenAI) for code development and refactoring. Whene
 @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 @author Contributors: Jules (Agentic AI)
 @date Initial, 2026-07-09
-@date Last update : 2026-08-21
+@date Last update : 2026-09-24
 """
 
 import argparse
@@ -33,7 +33,7 @@ from pathlib import Path
 
 def find_files(root_dir: Path, filename: str) -> list[Path]:
     """
-    Find files matching the filename (without extension) in src and include.
+    Find files matching the filename (without extension) in src.
 
     Parameters
     ----------
@@ -48,7 +48,7 @@ def find_files(root_dir: Path, filename: str) -> list[Path]:
         A list of matching file paths.
     """
     matches = []
-    search_dirs = [root_dir / "src", root_dir / "include"]
+    search_dirs = [root_dir / "src"]
     extensions = [".cpp", ".hpp", ".h", ".c"]
 
     for search_dir in search_dirs:
@@ -224,7 +224,7 @@ def main() -> None:
 
     source_files = find_files(root_dir, filename)
     if not source_files:
-        print(f"No source files found for '{filename}' in src/ or include/.")
+        print(f"No source files found for '{filename}' in src/.")
         return
 
     print(f"Checking unit tests for file: {filename}")

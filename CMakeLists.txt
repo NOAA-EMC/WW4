@@ -14,7 +14,7 @@
 #@author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 #@author Contributors : Jules (Agentic AI), Kit Stokes, Jessica Meixner
 #@date Initial : 2026-07-09
-#@date Last update : 2026-08-21
+#@date Last update : 2026-09-29
 
 cmake_minimum_required(VERSION 3.25)
 
@@ -90,6 +90,22 @@ add_library(
     src/ww4_core/w4core_init.cpp
     src/ww4_core/w4core_wave.cpp
     src/ww4_core/w4core_finalize.cpp
+    src/ww4_core/scheme_factory.cpp
+    src/ww4_core/solver_uq/solver_uq.cpp
+    src/ww4_core/solver_triangular/solver_triangular.cpp
+    src/ww4_core/solver_smc/solver_smc.cpp
+    src/ww4_core/source_terms/compute_all_source_terms.cpp
+    src/ww4_core/source_terms/ww4_ST1/ww4_ST1.cpp
+    src/ww4_core/source_terms/ww4_ST2/ww4_ST2.cpp
+    src/ww4_core/source_terms/ww4_ST4/ww4_ST4.cpp
+    src/ww4_core/source_terms/ww4_ST6/ww4_ST6.cpp
+    src/ww4_core/source_terms/ww4_LN1/ww4_LN1.cpp
+    src/ww4_core/source_terms/ww4_NL1/ww4_NL1.cpp
+    src/ww4_core/source_terms/ww4_NL2/ww4_NL2.cpp
+    src/ww4_core/source_terms/ww4_NL3/ww4_NL3.cpp
+    src/ww4_core/source_terms/ww4_BT1/ww4_BT1.cpp
+    src/ww4_core/source_terms/ww4_BT4/ww4_BT4.cpp
+    src/ww4_core/wave_model_solver.cpp
 )
 target_include_directories(ww4_core PUBLIC src)
 target_link_libraries(ww4_core PUBLIC ww4_utils)
@@ -162,6 +178,18 @@ if(WW4_ENABLE_TESTING)
     ww4_add_test(test_w4core_init tests/ww4_core/L1_test_w4core_init.cpp ww4_core)
     ww4_add_test(test_w4core_wave tests/ww4_core/L1_test_w4core_wave.cpp ww4_core)
     ww4_add_test(test_w4core_finalize tests/ww4_core/L1_test_w4core_finalize.cpp ww4_core)
+    ww4_add_test(test_compute_all_sources tests/ww4_core/L1_test_compute_all_source_terms.cpp ww4_core)
+    ww4_add_test(test_st1 tests/ww4_core/L1_test_ww4_ST1.cpp ww4_core)
+    ww4_add_test(test_st2 tests/ww4_core/L1_test_ww4_ST2.cpp ww4_core)
+    ww4_add_test(test_st4 tests/ww4_core/L1_test_ww4_ST4.cpp ww4_core)
+    ww4_add_test(test_st6 tests/ww4_core/L1_test_ww4_ST6.cpp ww4_core)
+    ww4_add_test(test_ln1 tests/ww4_core/L1_test_ww4_LN1.cpp ww4_core)
+    ww4_add_test(test_nl1 tests/ww4_core/L1_test_ww4_NL1.cpp ww4_core)
+    ww4_add_test(test_nl2 tests/ww4_core/L1_test_ww4_NL2.cpp ww4_core)
+    ww4_add_test(test_nl3 tests/ww4_core/L1_test_ww4_NL3.cpp ww4_core)
+    ww4_add_test(test_bt1 tests/ww4_core/L1_test_ww4_BT1.cpp ww4_core)
+    ww4_add_test(test_bt4 tests/ww4_core/L1_test_ww4_BT4.cpp ww4_core)
+    ww4_add_test(test_wave_model_solver tests/ww4_core/L2_test_wave_model_solver.cpp ww4_core)
     ww4_add_test(test_w4core_time tests/ww4_core/L2_test_w4core_time.cpp ww4_core)
     ww4_add_test(test_w4core_wave_output tests/ww4_core/L2_test_w4core_wave_output.cpp ww4_core)
     ww4_add_test(test_w4core_zero_step tests/ww4_core/L2_test_w4core_zero_step.cpp ww4_core)

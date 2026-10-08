@@ -18,15 +18,15 @@ general:
   # Calendar type for the simulation.
   # Options: "Standard" (default), "NoLeap", "ThreeSixtyDay"
   # Note: "Standard" refers to the normal Gregorian calendar.
-  calendar_type: "Standard"
+  # calendar_type: "Standard"
 
   # Option for producing standard program output to the screen.
   # Options: "yes" (default), "no"
-  produce_std_out: "yes"
+  # produce_std_out: "no"
 
   # Option for producing a log file.
   # Options: "yes" (default), "no"
-  produce_log_file: "yes"
+  # produce_log_file: "no"
 
   # Option for the level of output to standard output during time stepping.
   # Options: "none", "summary" (default), "full"
@@ -43,44 +43,67 @@ spectral_space:
   # Parameters defining the discrete spectral space based on WAVEWATCH III.
 
   # Number of directional bins (default: 36).
-  num_directions: 36
+  # num_directions: 36
 
   # Number of frequency bins (default: 50).
-  num_frequencies: 50
+  # num_frequencies: 50
 
   # Frequency increment factor (default: 1.07).
-  freq_increment_factor: 1.07
+  # freq_increment_factor: 1.07
 
   # First (lowest) discrete frequency in Hz (default: 0.035).
-  first_frequency: 0.035
+  # first_frequency: 0.035
 
   # Offset of the first direction as a fraction of the directional step (range: 0.0 - 1.0, default: 0.5).
-  first_direction_offset: 0.5
+  # first_direction_offset: 0.5
 
 physics:
   # Option for a dry run (no computations).
   # Options: "no" (default), "yes"
-  dry_run: "no"
+  # dry_run: "yes"
 
   # Option for propagation in x-direction.
   # Options: "yes" (default), "no"
-  propagate_x: "yes"
+  # propagate_x: "no"
 
   # Option for propagation in y-direction.
   # Options: "yes" (default), "no"
-  propagate_y: "yes"
+  # propagate_y: "no"
 
   # Option for propagation in theta-direction.
   # Options: "yes" (default), "no"
-  propagate_theta: "yes"
+  # propagate_theta: "no"
 
   # Option for propagation in k-direction.
   # Options: "yes" (default), "no"
-  propagate_k: "yes"
+  # propagate_k: "no"
 
   # Option for processing source terms.
   # Options: "yes" (default), "no"
-  source_terms: "yes"
+  # source_terms: "no"
+
+  # Mandatory numerical solver selection (no default).
+  # Options:
+  #   "UQ"         : Regular grid using the ULTIMATE QUICKEST (UQ) scheme
+  #   "triangular" : Triangular unstructured grid approach (TBD)
+  #   "SMC"        : Spherical Multiple-Cell (SMC) grid from UK MetOffice
+  solver: "UQ"
+
+  # Mandatory linear input source term selection (no default).
+  # Options: "none", "LN1"
+  linear_input: "LN1"
+
+  # Mandatory input and dissipation source term selection (no default).
+  # Options: "none", "ST1", "ST2", "ST4", "ST6"
+  input_dissipation: "ST4"
+
+  # Mandatory nonlinear interaction source term selection (no default).
+  # Options: "none", "NL1", "NL2", "NL3"
+  nonlinear_interactions: "NL1"
+
+  # Mandatory bottom friction source term selection (no default).
+  # Options: "none", "BT1", "BT4"
+  bottom_friction: "BT1"
 
 forcing:
   # Mandatory input field options.
@@ -150,15 +173,15 @@ output:
 
   # Output type 1: Gridded fields
   fields:
-    requested: "no"
-    interval: 3600.0
+    requested: "yes"
+    interval: 10800.0
     # start: "20260101 000000"
     # end: "20260102 000000"
     at_first: "yes"
 
   # Output type 2: Point output
   points:
-    requested: "no"
+    requested: "yes"
     interval: 3600.0
     # start: "20260101 000000"
     # end: "20260102 000000"
@@ -166,11 +189,11 @@ output:
 
   # Output type 3: Restart files
   restart:
-    requested: "no"
+    requested: "yes"
     interval: 86400.0
     # start: "20260101 000000"
     # end: "20260102 000000"
-    at_first: "yes"
+    at_first: "no"
 
   # Output type 4: API output
   # Options: "no" (default), "yes"

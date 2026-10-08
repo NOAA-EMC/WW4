@@ -31,98 +31,67 @@
 #include <exception>
 #include <iostream>
 
-/**
- * @namespace ww4_core
- * @brief Core routines for WAVEWATCH IV.
- */
 namespace ww4_core {
 
+// --- w4core_finalize --------------------------------------------------------
 /**
  * @brief Finalization routine for the WAVEWATCH IV core.
  * @details Performs all necessary cleanup and final reporting for the
  *          wave model core. Follows the architectural design of the
  *          finalization in ww3_multi.F90 from WAVEWATCH III.
- * @param[in] endTime Simulation end time.
- * @param[in] os Output stream for reporting.
+ * @param endTime Simulation end time.
+ * @param os Output stream for reporting.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
- * @date 2026-05-21
+ * @date Initial, 2026-04-03
+ * @date Last update : 2026-10-01
  */
 void w4core_finalize(const ww4_utils::DateTime &endTime, std::ostream &os) {
   try {
-    //
-    // 1.  Capture run time --------------------------------------------------
-    //
+    // === Capture run time ===================================================
     const double runTime = ww4_utils::TimeManagement::getProfilingTime();
 
-    //
-    // 2.  Final standard output (if requested) ------------------------------
-    // 2.1 Initial line
-    //
+    // === Final standard output ==============================================
     if (getRunConfig().produceStdOut) {
       os << "\n  Finalization (w4core_finalize) starting: "
          << ww4_utils::TimeManagement::toFormattedString(endTime) << "\n"
          << std::endl;
 
-      //
-      // 2.2 Report out run end time
-      //
       os << "  Run ends at "
          << ww4_utils::TimeManagement::toFormattedString(
                 ww4_utils::TimeManagement::getPresentDateTime())
          << std::endl;
 
-      //
-      // 2.3 Run time summary
-      //
       ww4_utils::ww4_std_out::writeFinalOutput(os, getProgramName(),
                                                std::nullopt, runTime);
     }
 
-    //
-    // 3.  Final log file output (if requested) ------------------------------
-    //
+    // === Final log file output ==============================================
     if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
-      //
-      // 3.1 Write tabular log footer
-      //
       ww4_utils::ww4_logfile::writeLogTableFooter(getLogFileStream());
 
-      //
-      // 3.2 Initial line
-      //
       getLogFileStream() << "\n  Finalization (w4core_finalize) starting: "
                          << ww4_utils::TimeManagement::toFormattedString(
                                 endTime)
                          << "\n"
                          << std::endl;
 
-      //
-      // 3.3 Report out run end time
-      //
       getLogFileStream() << "  Run ends at "
                          << ww4_utils::TimeManagement::toFormattedString(
                                 ww4_utils::TimeManagement::getPresentDateTime())
                          << std::endl;
 
-      //
-      // 3.4 Run time summary
-      //
       ww4_utils::ww4_logfile::writeFinalOutput(
           getLogFileStream(), getProgramName(), std::nullopt, runTime);
-      //
-      // 3.5 Close log file
-      //
+
       getLogFileStream().close();
     }
 
-    //
-    // 4.  Release persistent model data -------------------------------------
-    //
-    // 4.1 Check model time versus end time
-    //
+    // === Release persistent model data =====================================
     if (getWaveTimeData().modelTime.has_value() &&
         *getWaveTimeData().modelTime != endTime) {
+      // Explanatory comment preceding __FILE__ and __LINE__
+      // Issue warning when model time mismatch occurs
       ww4_utils::ww4_std_out::warning(os, "Model time does not match end time.",
                                       __FILE__, __LINE__);
     }
@@ -132,8 +101,12 @@ void w4core_finalize(const ww4_utils::DateTime &endTime, std::ostream &os) {
     ww4_utils::resetInputData();
     resetInternalState();
   } catch (const std::exception &e) {
+    // Explanatory comment preceding __FILE__ and __LINE__
+    // Terminate execution on standard exception
     ww4_utils::ww4_std_out::extcde(1, os, e.what(), __FILE__, __LINE__);
   } catch (...) {
+    // Explanatory comment preceding __FILE__ and __LINE__
+    // Terminate execution on unknown exception
     ww4_utils::ww4_std_out::extcde(
         1, os, "Unknown exception in w4core_finalize", __FILE__, __LINE__);
   }

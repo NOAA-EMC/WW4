@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-05-26
+ * @date Last update : 2026-09-29
  * @note This program follows the structure of the stand-alone shell
  *       (ww3_shel.F90) in WAVEWATCH III.
  *       Original author of WW3 stand-alone shell: Hendrik L. Tolman.
@@ -32,23 +32,32 @@
 #include <filesystem>
 #include <iostream>
 
+// --- main -------------------------------------------------------------------
+/**
+ * @brief Main entry point for the stand-alone WAVEWATCH IV executable.
+ * @param argc Command line argument count.
+ * @param argv Command line argument values.
+ * @return Exit status code (0 for success, non-zero for failure).
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI)
+ * @date Initial, 2026-04-03
+ * @date Last update : 2026-09-29
+ */
 int main(int argc, char **argv) {
   try {
-    //
-    // 0.  Program initialization -------------------------------------------
-    // 0.0 Extract program name
-    //
+    // === Program initialization =============================================
+    // --- Extract program name -----------------------------------------------
     std::string programName = "ww4_standalone";
     if (argc > 0) {
       programName = std::filesystem::path(argv[0]).stem().string();
     }
 
-    //
-    // 0.1 Load configuration from ww4_standalone.yaml file
-    //
+    // --- Load configuration from ww4_standalone.yaml file -------------------
     const auto config =
         ww4_utils::loadStandaloneConfig("ww4_standalone.yaml", std::cout);
     if (!config) {
+      // Passing source file name (__FILE__) and line number (__LINE__) for
+      // error reporting and location tracing
       ww4_utils::ww4_std_out::extcde(1, std::cerr,
                                      "Could not load stand-alone configuration",
                                      __FILE__, __LINE__);
@@ -56,22 +65,15 @@ int main(int argc, char **argv) {
 
     ww4_utils::reportStandaloneConfig(*config, std::cout);
 
-    //
-    // 0.2 MPI initialization (if applicable) -------------------------------
-    //
-    //
-    // 1.  Run initialization routine  --------------------------------------
-    //
+    // --- MPI initialization (if applicable) ---------------------------------
+
+    // === Run initialization routine =========================================
     ww4_core::w4core_init(config->startTime, programName, std::cout);
 
-    //
-    // 2.  Run time stepping routine  ----------------------------------------
-    //
+    // === Run time stepping routine ==========================================
     ww4_core::w4core_wave(config->startTime, config->endTime, std::cout);
 
-    //
-    // 3.  Run finalization routine  -----------------------------------------
-    //
+    // === Run finalization routine ===========================================
     ww4_core::w4core_finalize(config->endTime, std::cout);
 
     return 0;
