@@ -257,6 +257,8 @@ struct HomogeneousDataPoint {
  * @brief Propagation flag in k-direction.
  * @var RunConfig::gridFile
  * @brief Grid file name.
+ * @var RunConfig::printGridMeta
+ * @brief Optional printing of grid file metadata flag.
  * @var RunConfig::sourceTerms
  * @brief Source terms flag.
  * @var RunConfig::solver
@@ -317,6 +319,7 @@ struct RunConfig {
   bool sourceTerms = true;
 
   std::string gridFile;
+  bool printGridMeta = true;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;

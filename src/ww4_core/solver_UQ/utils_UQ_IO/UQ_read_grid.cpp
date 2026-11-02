@@ -306,4 +306,51 @@ int readUQgrid(const std::filesystem::path &filepath, UgridGrid &grid) {
   return 0;
 }
 
+// --- printGridMetadata ------------------------------------------------------
+void printGridMetadata(const UgridGrid &grid, std::ostream &os) {
+  os << "     Grid metadata:" << std::endl;
+  os << "        Grid dimensions       : " << grid.nx << " x " << grid.ny
+     << std::endl;
+  os << "        Number of faces       : " << grid.n_faces << std::endl;
+  os << "        Number of nodes       : " << grid.n_nodes << std::endl;
+  os << "        Max nodes per face    : " << grid.max_face_nodes << std::endl;
+  if (!grid.title.empty()) {
+    os << "        Title                 : " << grid.title << std::endl;
+  }
+  if (!grid.source.empty()) {
+    os << "        Source                : " << grid.source << std::endl;
+  }
+  if (!grid.grid_type.empty()) {
+    os << "        Grid type             : " << grid.grid_type << std::endl;
+  }
+  if (!grid.coord_type.empty()) {
+    os << "        Coordinate type       : " << grid.coord_type << std::endl;
+  }
+  if (!grid.global_closure.empty()) {
+    os << "        Global closure        : " << grid.global_closure
+       << std::endl;
+  }
+  if (!grid.bathy_source.empty()) {
+    os << "        Bathymetry source     : " << grid.bathy_source << std::endl;
+  }
+  if (!grid.bound_source.empty()) {
+    os << "        Boundary source       : " << grid.bound_source << std::endl;
+  }
+  if (!grid.conventions.empty()) {
+    os << "        Conventions           : " << grid.conventions << std::endl;
+  }
+  if (!grid.history.empty()) {
+    os << "        History               : " << grid.history << std::endl;
+  }
+  std::string obs_str = "none";
+  if (grid.has_obsx && grid.has_obsy) {
+    obs_str = "both directions";
+  } else if (grid.has_obsx) {
+    obs_str = "x direction only";
+  } else if (grid.has_obsy) {
+    obs_str = "y direction only";
+  }
+  os << "        Subgrid obstructions  : " << obs_str << std::endl;
+}
+
 } // namespace ww4::io

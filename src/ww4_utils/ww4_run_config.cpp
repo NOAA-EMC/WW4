@@ -292,6 +292,10 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
       if (node["grid_file"]) {
         config.gridFile = cleanValue(node["grid_file"].as<std::string>());
       }
+      if (node["print_meta"]) {
+        config.printGridMeta =
+            (cleanValue(node["print_meta"].as<std::string>()) == "yes");
+      }
     }
 
     // === General section =====================================================
@@ -715,6 +719,8 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
 
   os << "\n     Grid file name           : "
      << (config.gridFile.empty() ? "none" : config.gridFile) << std::endl;
+  os << "     Print grid metadata      : "
+     << (config.printGridMeta ? "yes" : "no") << std::endl;
 
   std::string solverStr = "undefined";
   if (config.solver == SolverType::UQ) {

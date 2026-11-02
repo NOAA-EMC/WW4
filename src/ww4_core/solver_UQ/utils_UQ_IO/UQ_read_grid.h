@@ -168,6 +168,17 @@ struct UgridGrid {
 [[nodiscard]] int readUQgrid(const std::filesystem::path &filepath,
                              UgridGrid &grid);
 
+// --- printGridMetadata ------------------------------------------------------
+/**
+ * @brief Prints metadata from a NetCDF-UGRID grid structure to the specified
+ * stream.
+ *
+ * @param[in]     grid UgridGrid structure containing grid metadata and
+ * dimensions.
+ * @param[in,out] os   Output stream to print metadata to.
+ */
+void printGridMetadata(const UgridGrid &grid, std::ostream &os);
+
 } // namespace ww4::io
 
 #endif // WW4_UQ_READ_GRID_H

@@ -67,6 +67,15 @@ void solver_UQ_init(std::ostream &os) {
     ww4_utils::ww4_std_out::extcde(status, os, errMsg, __FILE__, __LINE__);
   }
 
+  if (getRunConfig().printGridMeta) {
+    if (getRunConfig().produceStdOut) {
+      ww4::io::printGridMetadata(ugrid, os);
+    }
+    if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
+      ww4::io::printGridMetadata(ugrid, getLogFileStream());
+    }
+  }
+
   ww4_utils::FullGrid fullGrid;
   fullGrid.clear();
   fullGrid.gridType = ww4_utils::GridType::Rectangular;
