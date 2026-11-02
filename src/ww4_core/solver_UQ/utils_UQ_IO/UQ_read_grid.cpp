@@ -159,8 +159,8 @@ bool read_variable(const int ncid, const char *varname, std::vector<T> &vec) {
         vec[i] = static_cast<int32_t>(tmp_64[i]);
       }
     } else {
-      if (!check_nc_err(nc_get_var_int(
-              ncid, varid, reinterpret_cast<int *>(vec.data())))) {
+      if (!check_nc_err(nc_get_var_int(ncid, varid,
+                                       reinterpret_cast<int *>(vec.data())))) {
         return false;
       }
     }
