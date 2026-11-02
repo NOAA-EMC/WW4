@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -36,10 +37,7 @@ TEST(SolverUQTest, BasicPropertiesAndInit) {
   EXPECT_EQ(solver.getName(), "UQ");
 
   getMutableRunConfig().gridFile = "ww4_grid_ugrid.nc";
-  {
-    std::ofstream g1("ww4_grid_ugrid.nc");
-    g1 << "grid_name: ww4_grid_ugrid.nc\nnx: 10\nny: 10\nsx: 1.0\nsy: 1.0\n";
-  }
+  ww4::test_helpers::createMinimalUgridFile("ww4_grid_ugrid.nc", 10, 10);
 
   testing::internal::CaptureStdout();
   solver_UQ_init();

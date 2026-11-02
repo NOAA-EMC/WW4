@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -35,8 +36,7 @@ class W4CoreInitTest : public ::testing::Test {
 protected:
   void SetUp() override {
     resetInternalState();
-    std::ofstream g("test_grid.nc");
-    g << "grid_name: test_grid.nc\nnx: 10\nny: 10\nsx: 1.0\nsy: 1.0\n";
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
   }
 
   void TearDown() override {
