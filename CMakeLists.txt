@@ -14,7 +14,7 @@
 #@author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 #@author Contributors : Jules (Agentic AI), Kit Stokes, Jessica Meixner
 #@date Initial : 2026-07-09
-#@date Last update : 2026-10-30
+#@date Last update : 2026-11-02
 
 cmake_minimum_required(VERSION 3.25)
 
@@ -61,6 +61,9 @@ endif()
 
 # yaml-cpp for configuration parsing
 if(EXISTS "${CMAKE_SOURCE_DIR}/externals/yaml-cpp/CMakeLists.txt")
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
     add_subdirectory(externals/yaml-cpp EXCLUDE_FROM_ALL SYSTEM)
 else()
     message(FATAL_ERROR "yaml-cpp submodule not found in externals/yaml-cpp. Please run: git submodule update --init --recursive")
@@ -84,6 +87,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/externals/netcdf-c/CMakeLists.txt")
     set(NETCDF_ENABLE_DAP OFF CACHE BOOL "" FORCE)
     set(NETCDF_ENABLE_NCZARR OFF CACHE BOOL "" FORCE)
     set(NETCDF_ENABLE_UTILITIES OFF CACHE BOOL "" FORCE)
+    set(NETCDF_BUILD_UTILITIES OFF CACHE BOOL "" FORCE)
     set(NETCDF_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
     set(NETCDF_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
@@ -95,6 +99,17 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/externals/netcdf-c/CMakeLists.txt")
     unset(ENABLE_NETCDF_4 CACHE)
     unset(ENABLE_TESTS CACHE)
     add_subdirectory(externals/netcdf-c EXCLUDE_FROM_ALL SYSTEM)
+
+    # Suppress warnings on netcdf-c targets in production mode
+    foreach(nc_target netcdf netcdf3 dispatch)
+        if(TARGET ${nc_target})
+            if(MSVC)
+                target_compile_options(${nc_target} PRIVATE /w)
+            else()
+                target_compile_options(${nc_target} PRIVATE -w)
+            endif()
+        endif()
+    endforeach()
 else()
     message(FATAL_ERROR "netcdf-c submodule not found in externals/netcdf-c. Please run: git submodule update --init --recursive")
 endif()
@@ -170,6 +185,8 @@ if(WW4_ENABLE_TESTING)
     if(EXISTS "${CMAKE_SOURCE_DIR}/externals/googletest/CMakeLists.txt")
         # For Windows: Prevent overriding the parent project's compiler/linker settings
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
         add_subdirectory(externals/googletest EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(FATAL_ERROR "googletest submodule not found in externals/googletest. Please run: git submodule update --init --recursive")
