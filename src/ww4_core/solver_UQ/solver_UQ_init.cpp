@@ -21,12 +21,15 @@
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
+#include "ww4_core/solver_UQ/UQ_domains.h"
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.h"
 #include "ww4_core/w4core_init.h"
 #include "ww4_utils/spatial_grid.h"
 #include "ww4_utils/ww4_logfile.h"
 #include "ww4_utils/ww4_run_config.h"
 #include "ww4_utils/ww4_std_out.h"
+#include <filesystem>
 #include <iostream>
 
 namespace ww4_core {
@@ -168,23 +171,68 @@ void solver_UQ_init(std::ostream &os) {
   // Suppress unused variable warning pending domain decomposition integration
   (void)fullGrid;
 
-  // === Domain decomposition and partition data lifecycle ===================
-  // Placeholder for grid partitioning and parallel sub-domain setup:
-  // - Check runtime partition mode configuration (grid.partition.mode).
-  // - If precomputed partition file exists (e.g., partition_map.nc):
-  //     * Call PartitionIO::readPartitionMapNetCDF to load domain assignments,
-  //       local sub-grid bounding boxes (nx_local, ny_local), and halo exchange
-  //       maps.
-  // - Else (generate_internal or auto mode):
-  //     * Rank 0 / Initializer calls partitionGlobalGrid (2D rectilinear band
-  //     or
-  //       METIS/Cardigan domain partitioner) to assign grid cells to MPI ranks.
-  //     * Export partition map to file via PartitionIO::writePartitionMapNetCDF
-  //       (partition_map.nc) for future execution runs.
-  // - Populate LocalGridPartition for current rank, initializing local
-  // contiguous
-  //   topobathy buffers, ghost/halo boundary cell mappings, and
-  //   local_to_global_map.
+  // === Domain decomposition setup ==========================================
+
+  // Determine partition file name by adding ".partitions" before file extension
+  std::filesystem::path gridFilePath(getRunConfig().gridFile);
+  std::string partFileName = gridFilePath.stem().string() + ".partitions" +
+                             gridFilePath.extension().string();
+  std::filesystem::path partFilePath =
+      gridFilePath.has_parent_path()
+          ? (gridFilePath.parent_path() / partFileName)
+          : std::filesystem::path(partFileName);
+  std::string partFileStr = partFilePath.string();
+
+  // Print partition file name to stdout and log file
+  if (getRunConfig().produceStdOut) {
+    os << "     Partition file           : " << partFileStr << std::endl;
+  }
+  if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
+    getLogFileStream() << "     Partition file           : " << partFileStr
+                       << std::endl;
+  }
+
+  // Attempt to read partition file
+  ww4::io::PartitionMapData partData;
+  int partStatus = ww4::io::readPartitionMapNetCDF(partFilePath, partData);
+
+  std::vector<int> partitionMap;
+
+  // Process read result: on failure, report error message and compute partition
+  // map
+  if (partStatus != 0) {
+    std::string errMsg;
+    if (partStatus == 1) {
+      errMsg =
+          "Partition file does not exist or failed opening: " + partFileStr;
+    } else if (partStatus == 2) {
+      errMsg = "Failed reading metadata dimensions from file: " + partFileStr;
+    } else {
+      errMsg = "Failed reading partition map dataset arrays from file: " +
+               partFileStr;
+    }
+
+    if (getRunConfig().produceStdOut) {
+      os << "     Partition read error     : " << errMsg << std::endl;
+    }
+    if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
+      getLogFileStream() << "     Partition read error     : " << errMsg
+                         << std::endl;
+    }
+
+    // Compute partition map using domain partitioning routine
+    partitionMap = ww4_utils::UQ_utils::partitionGlobalGrid(
+        static_cast<int>(ugrid.nx), static_cast<int>(ugrid.ny),
+        fullGrid.landMask, getRunConfig().numRanksCompute, 100, nullptr,
+        rectData.isGlobal);
+  } else {
+    // Populate partition map from successfully read file
+    partitionMap.assign(partData.partition_map.begin(),
+                        partData.partition_map.end());
+  }
+
+  // Suppress unused variable warning pending sub-domain extraction integration
+  (void)partitionMap;
 
   // === Halo communication setup =============================================
   // Placeholder for initializing halo communication structures:
