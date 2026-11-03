@@ -18,12 +18,14 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-02
+ * @date Last update : 2026-11-03
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_write_partition.h"
 #include "ww4_core/w4core_init.h"
 #include "ww4_utils/ww4_logfile.h"
+#include <filesystem>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <netcdf.h>
@@ -132,6 +134,91 @@ TEST(SolverUQInitTest, AbortsWhenDataVariablesMissing) {
                "Failed reading grid dataset arrays from file");
 
   std::remove(filename.c_str());
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, PartitionFileNotFoundLogsErrorAndComputesPartitions) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_nopart.nc";
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nopart.nc", 10, 10); }
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(
+      output.find("Partition file           : my_uq_grid_nopart.partitions.nc"),
+      std::string::npos);
+  EXPECT_NE(
+      output.find("Partition read error     : Partition file does not exist or "
+                  "failed opening: my_uq_grid_nopart.partitions.nc"),
+      std::string::npos);
+
+  std::remove("my_uq_grid_nopart.nc");
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, PartitionFileExistsAndLoadsSuccessfully) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_withpart.nc";
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  {
+    ww4::test_helpers::createMinimalUgridFile("my_uq_grid_withpart.nc", 10, 10);
+  }
+
+  ww4::io::UgridGrid ugrid;
+  ASSERT_EQ(ww4::io::readUQgrid("my_uq_grid_withpart.nc", ugrid), 0);
+  std::vector<int32_t> partMap(10 * 10, 1);
+  ASSERT_EQ(ww4::io::writePartitionMapNetCDF(
+                "my_uq_grid_withpart.partitions.nc", ugrid, 1, partMap),
+            0);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find(
+                "Partition file           : my_uq_grid_withpart.partitions.nc"),
+            std::string::npos);
+  EXPECT_EQ(output.find("Partition read error"), std::string::npos);
+
+  std::remove("my_uq_grid_withpart.nc");
+  std::remove("my_uq_grid_withpart.partitions.nc");
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, PartitionFileCorruptedLogsErrorAndDoesNotAbort) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_badpart.nc";
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  {
+    ww4::test_helpers::createMinimalUgridFile("my_uq_grid_badpart.nc", 10, 10);
+  }
+
+  // Create corrupted partition file missing required dimensions/attributes
+  int ncid = -1;
+  ASSERT_EQ(nc_create("my_uq_grid_badpart.partitions.nc", NC_CLOBBER, &ncid),
+            NC_NOERR);
+  ASSERT_EQ(nc_close(ncid), NC_NOERR);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find(
+                "Partition file           : my_uq_grid_badpart.partitions.nc"),
+            std::string::npos);
+  EXPECT_NE(
+      output.find("Partition read error     : Failed reading metadata "
+                  "dimensions from file: my_uq_grid_badpart.partitions.nc"),
+      std::string::npos);
+
+  std::remove("my_uq_grid_badpart.nc");
+  std::remove("my_uq_grid_badpart.partitions.nc");
   resetInternalState();
 }
 
