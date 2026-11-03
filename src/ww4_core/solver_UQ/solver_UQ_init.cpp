@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-02
+ * @date Last update : 2026-11-03
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -32,6 +32,7 @@
 namespace ww4_core {
 
 // --- solver_UQ_init ---------------------------------------------------------
+
 void solver_UQ_init(std::ostream &os) {
   if (getRunConfig().produceStdOut) {
     os << "  Processing the grid:\n"
@@ -43,10 +44,14 @@ void solver_UQ_init(std::ostream &os) {
                        << "     Grid file                : "
                        << getRunConfig().gridFile << std::endl;
   }
-
   // === Spatial grid ingestion ===============================================
+
   ww4::io::UgridGrid ugrid;
+
+  // Attempt to read the file (all data)
   int status = ww4::io::readUQgrid(getRunConfig().gridFile, ugrid);
+
+  // Error processing
   if (status != 0) {
     std::string errMsg;
     if (status == 1) {
@@ -65,9 +70,11 @@ void solver_UQ_init(std::ostream &os) {
       ww4_utils::ww4_std_out::writeExtcdeOutput(getLogFileStream(), errMsg,
                                                 __FILE__, __LINE__);
     }
+    // Failure to read file, abort program
     ww4_utils::ww4_std_out::extcde(status, os, errMsg, __FILE__, __LINE__);
   }
 
+  // Output of meta data if requested
   if (getRunConfig().printGridMeta) {
     if (getRunConfig().produceStdOut) {
       ww4::io::printGridMetadata(ugrid, os);
