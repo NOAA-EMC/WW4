@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-27
- * @date Last update : 2026-11-02
+// @date Last update : 2026-11-03
  */
 
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.h"
@@ -299,6 +299,7 @@ TEST(UQReadGridTest, PrintGridMetadataOutputsCorrectInformation) {
   grid.history = "2026-11-02 created";
   grid.has_obsx = true;
   grid.has_obsy = false;
+  grid.grid_mask = {0, 0, 1, 1, 1, 2, 3, 3, 3, 3};
 
   std::ostringstream ss;
   printGridMetadata(grid, ss);
@@ -313,6 +314,10 @@ TEST(UQReadGridTest, PrintGridMetadataOutputsCorrectInformation) {
   EXPECT_NE(out.find("Number of faces       : 50"), std::string::npos);
   EXPECT_NE(out.find("Number of nodes       : 66"), std::string::npos);
   EXPECT_NE(out.find("Max nodes per face    : 4"), std::string::npos);
+  EXPECT_NE(out.find("Land points           : 2"), std::string::npos);
+  EXPECT_NE(out.find("Sea points            : 3"), std::string::npos);
+  EXPECT_NE(out.find("Boundary points       : 1"), std::string::npos);
+  EXPECT_NE(out.find("Excluded points       : 4"), std::string::npos);
   EXPECT_NE(out.find("Grid type             : curvilinear"), std::string::npos);
   EXPECT_NE(out.find("Coordinate type       : spherical"), std::string::npos);
   EXPECT_NE(out.find("Global closure        : closed"), std::string::npos);
