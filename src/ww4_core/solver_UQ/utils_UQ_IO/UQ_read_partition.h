@@ -91,10 +91,10 @@ struct PartitionMapData {
   }
 };
 
-// --- readPartitionMapNetCDF -------------------------------------------------
+// --- readUQpartitionMapNetCDF -----------------------------------------------
 /**
  * @brief Reads partition map metadata and the last partition map from a NetCDF
- * file.
+ * file for the UQ solver.
  *
  * @details Opens the file at `filepath` using netcdf-c API, verifies existence
  * (status 1 on missing/unopenable file), parses dimensions `ny`, `nx`, and
@@ -112,8 +112,23 @@ struct PartitionMapData {
  * @post On success (return code 0), `part_data` contains the last map slice. On
  * failure, `part_data` is cleared.
  */
-[[nodiscard]] int readPartitionMapNetCDF(const std::filesystem::path &filepath,
-                                         PartitionMapData &part_data);
+[[nodiscard]] int
+readUQpartitionMapNetCDF(const std::filesystem::path &filepath,
+                         PartitionMapData &part_data);
+
+// --- readPartitionMapNetCDF -------------------------------------------------
+/**
+ * @brief Backward-compatible alias for readUQpartitionMapNetCDF.
+ *
+ * @param[in]  filepath  Path to the NetCDF file to read.
+ * @param[out] part_data Container populated with metadata, partition count,
+ *                       dimensions, and the last partition map.
+ * @return int Status code.
+ */
+inline int readPartitionMapNetCDF(const std::filesystem::path &filepath,
+                                  PartitionMapData &part_data) {
+  return readUQpartitionMapNetCDF(filepath, part_data);
+}
 
 } // namespace ww4::io
 
