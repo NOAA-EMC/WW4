@@ -18,7 +18,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-10-27
-// @date Latest Update : 2026-11-02
+// @date Last update : 2026-11-02
 
 #ifndef WW4_UQ_READ_GRID_H
 #define WW4_UQ_READ_GRID_H
@@ -167,6 +167,17 @@ struct UgridGrid {
  */
 [[nodiscard]] int readUQgrid(const std::filesystem::path &filepath,
                              UgridGrid &grid);
+
+// --- printGridMetadata ------------------------------------------------------
+/**
+ * @brief Prints metadata from a NetCDF-UGRID grid structure to the specified
+ * stream.
+ *
+ * @param[in]     grid UgridGrid structure containing grid metadata and
+ * dimensions.
+ * @param[in,out] os   Output stream to print metadata to.
+ */
+void printGridMetadata(const UgridGrid &grid, std::ostream &os);
 
 } // namespace ww4::io
 

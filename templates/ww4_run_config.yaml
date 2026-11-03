@@ -119,6 +119,10 @@ grid:
   # Mandatory grid input file name (no default).
   grid_file: "ww4_grid_ugrid.nc"
 
+  # Option for optional printing of metadata from the grid file after reading.
+  # Options: "no" (default), "yes"
+  print_meta: "no"
+
 forcing:
   # Mandatory input field options.
   # Options: "none", "from_file", "from_coupling", "homogeneous", "from_grid"

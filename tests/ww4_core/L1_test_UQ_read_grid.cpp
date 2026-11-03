@@ -281,6 +281,50 @@ TEST(UQReadGridTest, ValidUgridFileSuccess) {
   std::remove(filename.c_str());
 }
 
+TEST(UQReadGridTest, PrintGridMetadataOutputsCorrectInformation) {
+  UgridGrid grid;
+  grid.nx = 10;
+  grid.ny = 5;
+  grid.n_faces = 50;
+  grid.n_nodes = 66;
+  grid.max_face_nodes = 4;
+  grid.title = "Sample Grid";
+  grid.source = "WW4 Test Suite";
+  grid.grid_type = "curvilinear";
+  grid.coord_type = "spherical";
+  grid.global_closure = "closed";
+  grid.bathy_source = "ETOPO";
+  grid.bound_source = "GSHHG";
+  grid.conventions = "UGRID-1.0";
+  grid.history = "2026-11-02 created";
+  grid.has_obsx = true;
+  grid.has_obsy = false;
+
+  std::ostringstream ss;
+  printGridMetadata(grid, ss);
+  const std::string out = ss.str();
+
+  EXPECT_NE(out.find("Grid metadata:"), std::string::npos);
+  EXPECT_NE(out.find("Title                 : Sample Grid"), std::string::npos);
+  EXPECT_NE(out.find("Source                : WW4 Test Suite"),
+            std::string::npos);
+  EXPECT_NE(out.find("Grid dimensions       : NX = 10, NY = 5"),
+            std::string::npos);
+  EXPECT_NE(out.find("Number of faces       : 50"), std::string::npos);
+  EXPECT_NE(out.find("Number of nodes       : 66"), std::string::npos);
+  EXPECT_NE(out.find("Max nodes per face    : 4"), std::string::npos);
+  EXPECT_NE(out.find("Grid type             : curvilinear"), std::string::npos);
+  EXPECT_NE(out.find("Coordinate type       : spherical"), std::string::npos);
+  EXPECT_NE(out.find("Global closure        : closed"), std::string::npos);
+  EXPECT_NE(out.find("Subgrid obstructions  : x direction only"),
+            std::string::npos);
+  EXPECT_NE(out.find("Bathymetry source     : ETOPO"), std::string::npos);
+  EXPECT_NE(out.find("Boundary resolution   : GSHHG"), std::string::npos);
+  EXPECT_NE(out.find("Conventions           : UGRID-1.0"), std::string::npos);
+  EXPECT_NE(out.find("History / creation    : 2026-11-02 created UTC"),
+            std::string::npos);
+}
+
 // References to function names for ww4_test_check.py routine coverage:
 // readUQgrid check_nc_err read_all_global_attributes read_variable clear get
-// ncid_ constexpr
+// ncid_ constexpr printGridMetadata

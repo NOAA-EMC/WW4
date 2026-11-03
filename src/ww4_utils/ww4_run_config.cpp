@@ -17,7 +17,7 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-10-28
+ * @date Last update : 2026-11-02
  */
 
 #include "ww4_utils/ww4_run_config.h"
@@ -278,7 +278,7 @@ std::string_view cleanValue(const std::string_view s) {
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-11-02
  */
 std::optional<RunConfig> loadRunConfig(const std::string_view filename,
                                        std::ostream &os) noexcept {
@@ -291,6 +291,10 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
     if (const auto node = config_node["grid"]) {
       if (node["grid_file"]) {
         config.gridFile = cleanValue(node["grid_file"].as<std::string>());
+      }
+      if (node["print_meta"]) {
+        config.printGridMeta =
+            (cleanValue(node["print_meta"].as<std::string>()) == "yes");
       }
     }
 
@@ -652,7 +656,7 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-10-01
+ * @date Last update : 2026-11-02
  */
 void reportRunConfig(const RunConfig &config, std::ostream &os) {
   os << "\n  General settings :" << std::endl;
@@ -715,6 +719,8 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
 
   os << "\n     Grid file name           : "
      << (config.gridFile.empty() ? "none" : config.gridFile) << std::endl;
+  os << "     Print grid metadata      : "
+     << (config.printGridMeta ? "yes" : "no") << std::endl;
 
   std::string solverStr = "undefined";
   if (config.solver == SolverType::UQ) {

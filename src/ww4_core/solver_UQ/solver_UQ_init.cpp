@@ -35,12 +35,13 @@ namespace ww4_core {
 void solver_UQ_init(std::ostream &os) {
   if (getRunConfig().produceStdOut) {
     os << "  Processing the grid:\n"
-       << "     Grid file: " << getRunConfig().gridFile << std::endl;
+       << "     Grid file                : " << getRunConfig().gridFile
+       << std::endl;
   }
   if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
     getLogFileStream() << "  Processing the grid:\n"
-                       << "     Grid file: " << getRunConfig().gridFile
-                       << std::endl;
+                       << "     Grid file                : "
+                       << getRunConfig().gridFile << std::endl;
   }
 
   // === Spatial grid ingestion ===============================================
@@ -65,6 +66,15 @@ void solver_UQ_init(std::ostream &os) {
                                                 __FILE__, __LINE__);
     }
     ww4_utils::ww4_std_out::extcde(status, os, errMsg, __FILE__, __LINE__);
+  }
+
+  if (getRunConfig().printGridMeta) {
+    if (getRunConfig().produceStdOut) {
+      ww4::io::printGridMetadata(ugrid, os);
+    }
+    if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
+      ww4::io::printGridMetadata(ugrid, getLogFileStream());
+    }
   }
 
   ww4_utils::FullGrid fullGrid;
