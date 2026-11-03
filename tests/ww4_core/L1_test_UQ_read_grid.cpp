@@ -319,7 +319,7 @@ TEST(UQReadGridTest, PrintGridMetadataOutputsCorrectInformation) {
   EXPECT_NE(out.find("Subgrid obstructions  : x direction only"),
             std::string::npos);
   EXPECT_NE(out.find("Bathymetry source     : ETOPO"), std::string::npos);
-  EXPECT_NE(out.find("Boundary source       : GSHHG"), std::string::npos);
+  EXPECT_NE(out.find("Boundary resolution   : GSHHG"), std::string::npos);
   EXPECT_NE(out.find("Conventions           : UGRID-1.0"), std::string::npos);
   EXPECT_NE(out.find("History / creation    : 2026-11-02 created UTC"),
             std::string::npos);

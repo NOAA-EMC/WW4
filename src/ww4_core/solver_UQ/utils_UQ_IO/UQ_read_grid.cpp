@@ -19,7 +19,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-10-27
-// @date Latest Update : 2026-11-02
+// @date Last update : 2026-11-02
 
 #include "UQ_read_grid.h"
 
@@ -343,7 +343,7 @@ void printGridMetadata(const UgridGrid &grid, std::ostream &os) {
     os << "        Bathymetry source     : " << grid.bathy_source << std::endl;
   }
   if (!grid.bound_source.empty()) {
-    os << "        Boundary source       : " << grid.bound_source << std::endl;
+    os << "        Boundary resolution   : " << grid.bound_source << std::endl;
   }
   if (!grid.conventions.empty()) {
     os << "        Conventions           : " << grid.conventions << std::endl;

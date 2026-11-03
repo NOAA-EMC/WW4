@@ -18,7 +18,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-10-27
-// @date Latest Update : 2026-11-02
+// @date Last update : 2026-11-02
 
 #ifndef WW4_UQ_READ_GRID_H
 #define WW4_UQ_READ_GRID_H
