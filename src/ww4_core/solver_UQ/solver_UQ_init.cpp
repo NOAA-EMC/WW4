@@ -24,6 +24,7 @@
 #include "ww4_core/solver_UQ/UQ_domains.h"
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.h"
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_write_partition.h"
 #include "ww4_core/w4core_init.h"
 #include "ww4_utils/spatial_grid.h"
 #include "ww4_utils/ww4_logfile.h"
@@ -194,7 +195,13 @@ void solver_UQ_init(std::ostream &os) {
 
   // Attempt to read partition file
   ww4::io::PartitionMapData partData;
-  int partStatus = ww4::io::readPartitionMapNetCDF(partFilePath, partData);
+  int partStatus = ww4::io::readUQpartitionMapNetCDF(partFilePath, partData);
+
+  // Check if partition count matches the user request
+  if (partStatus == 0 &&
+      partData.num_partitions != getRunConfig().numRanksCompute) {
+    partStatus = 4;
+  }
 
   std::vector<int> partitionMap;
 
@@ -203,13 +210,13 @@ void solver_UQ_init(std::ostream &os) {
   if (partStatus != 0) {
     std::string errMsg;
     if (partStatus == 1) {
-      errMsg =
-          "Partition file does not exist or failed opening: " + partFileStr;
+      errMsg = "Partition file does not exist or failed opening";
     } else if (partStatus == 2) {
-      errMsg = "Failed reading metadata dimensions from file: " + partFileStr;
+      errMsg = "Failed reading metadata dimensions from file";
+    } else if (partStatus == 3) {
+      errMsg = "Failed reading partition map dataset arrays from file";
     } else {
-      errMsg = "Failed reading partition map dataset arrays from file: " +
-               partFileStr;
+      errMsg = "Number of partitions in file does not match user request";
     }
 
     if (getRunConfig().produceStdOut) {
@@ -220,11 +227,30 @@ void solver_UQ_init(std::ostream &os) {
                          << std::endl;
     }
 
+    // Report partition map creation to stdout and log file
+    const std::string createMsg =
+        "Creating the partition map for " +
+        std::to_string(getRunConfig().numRanksCompute) + " partitions";
+    if (getRunConfig().produceStdOut) {
+      os << "     " << createMsg << std::endl;
+    }
+    if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+      getLogFileStream() << "     " << createMsg << std::endl;
+    }
+
     // Compute partition map using domain partitioning routine
     partitionMap = ww4_utils::UQ_utils::partitionGlobalGrid(
         static_cast<int>(ugrid.nx), static_cast<int>(ugrid.ny),
         fullGrid.landMask, getRunConfig().numRanksCompute, 100, nullptr,
         rectData.isGlobal);
+
+    // If partition map is successfully created, write a new partition file
+    if (!partitionMap.empty()) {
+      std::vector<int32_t> map32(partitionMap.begin(), partitionMap.end());
+      int writeStatus = ww4::io::writeUQpartitionMapNetCDF(
+          partFilePath, ugrid, getRunConfig().numRanksCompute, map32);
+      (void)writeStatus;
+    }
   } else {
     // Populate partition map from successfully read file
     partitionMap.assign(partData.partition_map.begin(),

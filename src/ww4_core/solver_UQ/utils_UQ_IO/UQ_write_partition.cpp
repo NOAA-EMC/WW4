@@ -42,9 +42,10 @@ bool check_nc_part_err(const int status) { return (status == NC_NOERR); }
 
 } // namespace
 
-// --- openPartitionMapFile ---------------------------------------------------
-int openPartitionMapFile(const std::filesystem::path &filepath,
-                         const UgridGrid &grid, int num_partitions, int &ncid) {
+// --- openUQpartitionMapFile -------------------------------------------------
+int openUQpartitionMapFile(const std::filesystem::path &filepath,
+                           const UgridGrid &grid, int num_partitions,
+                           int &ncid) {
   ncid = -1;
   if (grid.nx == 0 || grid.ny == 0 || num_partitions <= 0) {
     return 2;
@@ -150,9 +151,9 @@ int openPartitionMapFile(const std::filesystem::path &filepath,
   return 0;
 }
 
-// --- writeSinglePartitionMap ------------------------------------------------
-int writeSinglePartitionMap(int ncid, std::span<const int32_t> partition_map,
-                            std::size_t &map_index) {
+// --- writeSingleUQpartitionMap ----------------------------------------------
+int writeSingleUQpartitionMap(int ncid, std::span<const int32_t> partition_map,
+                              std::size_t &map_index) {
   if (ncid < 0) {
     return 3;
   }
@@ -191,27 +192,27 @@ int writeSinglePartitionMap(int ncid, std::span<const int32_t> partition_map,
   return 0;
 }
 
-// --- closePartitionMapFile --------------------------------------------------
-int closePartitionMapFile(int ncid) {
+// --- closeUQpartitionMapFile ------------------------------------------------
+int closeUQpartitionMapFile(int ncid) {
   if (ncid < 0) {
     return 0;
   }
   return nc_close(ncid);
 }
 
-// --- writePartitionMapNetCDF ------------------------------------------------
-int writePartitionMapNetCDF(const std::filesystem::path &filepath,
-                            const UgridGrid &grid, int num_partitions,
-                            std::span<const int32_t> partition_map) {
+// --- writeUQpartitionMapNetCDF ----------------------------------------------
+int writeUQpartitionMapNetCDF(const std::filesystem::path &filepath,
+                              const UgridGrid &grid, int num_partitions,
+                              std::span<const int32_t> partition_map) {
   int ncid = -1;
-  int status = openPartitionMapFile(filepath, grid, num_partitions, ncid);
+  int status = openUQpartitionMapFile(filepath, grid, num_partitions, ncid);
   if (status != 0) {
     return status;
   }
 
   std::size_t map_idx = 0;
-  status = writeSinglePartitionMap(ncid, partition_map, map_idx);
-  const int close_status = closePartitionMapFile(ncid);
+  status = writeSingleUQpartitionMap(ncid, partition_map, map_idx);
+  const int close_status = closeUQpartitionMapFile(ncid);
   if (status == 0 && close_status != 0) {
     return 3;
   }

@@ -44,11 +44,11 @@ TEST(UQWritePartitionTest, OneShotWrite) {
   const std::vector<int32_t> partition_map = {1, 1, 2, 1, 2, 2};
 
   int status =
-      writePartitionMapNetCDF(filename, grid, num_partitions, partition_map);
+      writeUQpartitionMapNetCDF(filename, grid, num_partitions, partition_map);
   ASSERT_EQ(status, 0);
 
   PartitionMapData read_data;
-  status = readPartitionMapNetCDF(filename, read_data);
+  status = readUQpartitionMapNetCDF(filename, read_data);
   ASSERT_EQ(status, 0);
   EXPECT_EQ(read_data.partition_map, partition_map);
 
@@ -65,7 +65,8 @@ TEST(UQWritePartitionTest, IncrementalMultipleMaps) {
 
   const int num_partitions = 3;
   int ncid = -1;
-  int open_status = openPartitionMapFile(filename, grid, num_partitions, ncid);
+  int open_status =
+      openUQpartitionMapFile(filename, grid, num_partitions, ncid);
   ASSERT_EQ(open_status, 0);
   ASSERT_GE(ncid, 0);
 
@@ -74,19 +75,19 @@ TEST(UQWritePartitionTest, IncrementalMultipleMaps) {
   std::vector<int32_t> map_stage2 = {1, 1, 1, 2, 2, 3, 3, 3};
 
   std::size_t map_idx = 0;
-  EXPECT_EQ(writeSinglePartitionMap(ncid, map_stage0, map_idx), 0);
+  EXPECT_EQ(writeSingleUQpartitionMap(ncid, map_stage0, map_idx), 0);
   EXPECT_EQ(map_idx, 1u);
 
-  EXPECT_EQ(writeSinglePartitionMap(ncid, map_stage1, map_idx), 0);
+  EXPECT_EQ(writeSingleUQpartitionMap(ncid, map_stage1, map_idx), 0);
   EXPECT_EQ(map_idx, 2u);
 
-  EXPECT_EQ(writeSinglePartitionMap(ncid, map_stage2, map_idx), 0);
+  EXPECT_EQ(writeSingleUQpartitionMap(ncid, map_stage2, map_idx), 0);
   EXPECT_EQ(map_idx, 3u);
 
-  EXPECT_EQ(closePartitionMapFile(ncid), 0);
+  EXPECT_EQ(closeUQpartitionMapFile(ncid), 0);
 
   PartitionMapData read_data;
-  int read_status = readPartitionMapNetCDF(filename, read_data);
+  int read_status = readUQpartitionMapNetCDF(filename, read_data);
   ASSERT_EQ(read_status, 0);
   EXPECT_EQ(read_data.partition_map, map_stage2);
 
@@ -98,18 +99,19 @@ TEST(UQWritePartitionTest, ErrorHandlingInWriter) {
   grid.nx = 0;
   grid.ny = 0;
   int ncid = -1;
-  EXPECT_EQ(openPartitionMapFile("test_err.nc", grid, 2, ncid), 2);
+  EXPECT_EQ(openUQpartitionMapFile("test_err.nc", grid, 2, ncid), 2);
 
   grid.nx = 2;
   grid.ny = 2;
-  EXPECT_EQ(openPartitionMapFile("test_err.nc", grid, 0, ncid), 2);
+  EXPECT_EQ(openUQpartitionMapFile("test_err.nc", grid, 0, ncid), 2);
 
   std::vector<int32_t> pmap = {1, 2, 1, 2};
   std::size_t idx = 0;
-  EXPECT_EQ(writeSinglePartitionMap(-1, pmap, idx), 3);
-  EXPECT_EQ(closePartitionMapFile(-1), 0);
+  EXPECT_EQ(writeSingleUQpartitionMap(-1, pmap, idx), 3);
+  EXPECT_EQ(closeUQpartitionMapFile(-1), 0);
 }
 
 // References to function names for ww4_test_check.py routine coverage:
 // openPartitionMapFile writeSinglePartitionMap closePartitionMapFile
-// writePartitionMapNetCDF check_nc_part_err
+// writePartitionMapNetCDF check_nc_part_err openUQpartitionMapFile
+// writeSingleUQpartitionMap closeUQpartitionMapFile writeUQpartitionMapNetCDF

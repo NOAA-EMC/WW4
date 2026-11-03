@@ -99,7 +99,7 @@ TEST(UQReadPartitionTest, ReadsLastMapAndMetadata) {
   EXPECT_EQ(closePartitionMapFile(ncid), 0);
 
   PartitionMapData read_data;
-  int read_status = readPartitionMapNetCDF(filename, read_data);
+  int read_status = readUQpartitionMapNetCDF(filename, read_data);
   ASSERT_EQ(read_status, 0);
 
   EXPECT_EQ(read_data.num_maps, 2u);
@@ -126,5 +126,5 @@ TEST(UQReadPartitionTest, ReadsLastMapAndMetadata) {
 }
 
 // References to function names for ww4_test_check.py routine coverage:
-// readPartitionMapNetCDF clear check_nc_read_err
+// readUQpartitionMapNetCDF readPartitionMapNetCDF clear check_nc_read_err
 // read_all_partition_global_attributes get ncid_

@@ -119,9 +119,9 @@ read_all_partition_global_attributes(const int ncid) {
 
 } // namespace
 
-// --- readPartitionMapNetCDF -------------------------------------------------
-int readPartitionMapNetCDF(const std::filesystem::path &filepath,
-                           PartitionMapData &part_data) {
+// --- readUQpartitionMapNetCDF -----------------------------------------------
+int readUQpartitionMapNetCDF(const std::filesystem::path &filepath,
+                             PartitionMapData &part_data) {
   part_data.clear();
 
   // Return code 1: File not found or failed opening
