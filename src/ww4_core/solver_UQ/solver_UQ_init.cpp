@@ -46,6 +46,7 @@ void solver_UQ_init(std::ostream &os) {
   }
   // === Spatial grid ingestion ===============================================
 
+  // Create UGRID data structure for reading grid geometry and metadata
   ww4::io::UgridGrid ugrid;
 
   // Attempt to read the file (all data)
@@ -84,6 +85,7 @@ void solver_UQ_init(std::ostream &os) {
     }
   }
 
+  // Initialize FullGrid structure and general grid metadata
   ww4_utils::FullGrid fullGrid;
   fullGrid.clear();
   fullGrid.gridType = ww4_utils::GridType::Rectangular;
@@ -95,6 +97,7 @@ void solver_UQ_init(std::ostream &os) {
   fullGrid.numNodes = ugrid.nx * ugrid.ny;
   fullGrid.shared.numNodes = fullGrid.numNodes;
 
+  // Populate 1D grid longitude and latitude coordinate arrays
   if (ugrid.nx > 0 && ugrid.ny > 0) {
     fullGrid.xCoordinates.reserve(ugrid.nx);
     for (std::size_t i = 0; i < ugrid.nx; ++i) {
@@ -109,6 +112,7 @@ void solver_UQ_init(std::ostream &os) {
     fullGrid.shared.yCoordinates = fullGrid.yCoordinates;
   }
 
+  // Populate rectangular grid specific data and check longitudinal closure
   ww4_utils::RectangularGridData rectData;
   rectData.nx = ugrid.nx;
   rectData.ny = ugrid.ny;
@@ -133,18 +137,21 @@ void solver_UQ_init(std::ostream &os) {
        ugrid.global_closure == "yes" || ugrid.global_closure == "1");
   fullGrid.specific = rectData;
 
+  // Populate unified topobathy elevation array
   fullGrid.topobathy.resize(fullGrid.numNodes);
   for (std::size_t i = 0; i < fullGrid.numNodes; ++i) {
     fullGrid.topobathy[i] = static_cast<double>(ugrid.grid_depth[i]);
   }
   fullGrid.shared.topobathy = fullGrid.topobathy;
 
+  // Populate land-sea mask array
   fullGrid.landMask.resize(fullGrid.numNodes);
   for (std::size_t i = 0; i < fullGrid.numNodes; ++i) {
     fullGrid.landMask[i] = static_cast<int>(ugrid.grid_mask[i]);
   }
   fullGrid.shared.landMask = fullGrid.landMask;
 
+  // Populate optional subgrid obstruction arrays in X and Y directions
   if (ugrid.has_obsx && !ugrid.grid_ObsX.empty()) {
     fullGrid.shared.obstructionX.resize(fullGrid.numNodes);
     for (std::size_t i = 0; i < fullGrid.numNodes; ++i) {
@@ -158,6 +165,7 @@ void solver_UQ_init(std::ostream &os) {
     }
   }
 
+  // Suppress unused variable warning pending domain decomposition integration
   (void)fullGrid;
 
   // === Domain decomposition and partition data lifecycle ===================
