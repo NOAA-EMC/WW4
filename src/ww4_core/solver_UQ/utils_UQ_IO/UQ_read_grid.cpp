@@ -19,7 +19,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-10-27
-// @date Last update : 2026-11-02
+// @date Last update : 2026-11-03
 
 #include "UQ_read_grid.h"
 
@@ -320,6 +320,29 @@ void printGridMetadata(const UgridGrid &grid, std::ostream &os) {
   os << "        Number of faces       : " << grid.n_faces << std::endl;
   os << "        Number of nodes       : " << grid.n_nodes << std::endl;
   os << "        Max nodes per face    : " << grid.max_face_nodes << std::endl;
+
+  const auto &mask_vec = !grid.grid_mask.empty() ? grid.grid_mask : grid.mask;
+  std::size_t land_points = 0;
+  std::size_t sea_points = 0;
+  std::size_t boundary_points = 0;
+  std::size_t excluded_points = 0;
+
+  for (int32_t val : mask_vec) {
+    if (val == 0) {
+      ++land_points;
+    } else if (val == 1) {
+      ++sea_points;
+    } else if (val == 2) {
+      ++boundary_points;
+    } else if (val == 3) {
+      ++excluded_points;
+    }
+  }
+
+  os << "        Land points           : " << land_points << std::endl;
+  os << "        Sea points            : " << sea_points << std::endl;
+  os << "        Boundary points       : " << boundary_points << std::endl;
+  os << "        Excluded points       : " << excluded_points << std::endl;
   if (!grid.grid_type.empty()) {
     os << "        Grid type             : " << grid.grid_type << std::endl;
   }

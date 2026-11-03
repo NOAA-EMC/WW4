@@ -141,6 +141,8 @@ add_library(
     src/ww4_core/scheme_factory.cpp
     src/ww4_core/solver_UQ/solver_UQ_exec.cpp
     src/ww4_core/solver_UQ/solver_UQ_init.cpp
+    src/ww4_core/solver_UQ/UQ_domains.cpp
+    src/ww4_core/solver_UQ/UQ_one_domain.cpp
     src/ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.cpp
     src/ww4_core/solver_UQ/utils_UQ_IO/UQ_write_grid.cpp
     src/ww4_core/solver_UQ/utils_UQ_IO/UQ_write_partition.cpp
@@ -235,6 +237,8 @@ if(WW4_ENABLE_TESTING)
 
     # Core tests
     ww4_add_test(test_scheme_factory tests/ww4_core/L1_test_scheme_factory.cpp ww4_core)
+    ww4_add_test(test_UQ_domains tests/ww4_core/L1_test_UQ_domains.cpp ww4_core)
+    ww4_add_test(test_UQ_one_domain tests/ww4_core/L1_test_UQ_one_domain.cpp ww4_core)
     ww4_add_test(test_UQ_read_grid tests/ww4_core/L1_test_UQ_read_grid.cpp ww4_core)
     ww4_add_test(test_UQ_write_grid tests/ww4_core/L1_test_UQ_write_grid.cpp ww4_core)
     ww4_add_test(test_UQ_write_partition tests/ww4_core/L1_test_UQ_write_partition.cpp ww4_core)
