@@ -305,22 +305,23 @@ TEST(UQReadGridTest, PrintGridMetadataOutputsCorrectInformation) {
   const std::string out = ss.str();
 
   EXPECT_NE(out.find("Grid metadata:"), std::string::npos);
-  EXPECT_NE(out.find("Grid dimensions       : 10 x 5"), std::string::npos);
-  EXPECT_NE(out.find("Number of faces       : 50"), std::string::npos);
-  EXPECT_NE(out.find("Number of nodes       : 66"), std::string::npos);
-  EXPECT_NE(out.find("Max nodes per face    : 4"), std::string::npos);
   EXPECT_NE(out.find("Title                 : Sample Grid"), std::string::npos);
   EXPECT_NE(out.find("Source                : WW4 Test Suite"),
             std::string::npos);
+  EXPECT_NE(out.find("Grid dimensions       : NX = 10, NY = 5"),
+            std::string::npos);
+  EXPECT_NE(out.find("Number of faces       : 50"), std::string::npos);
+  EXPECT_NE(out.find("Number of nodes       : 66"), std::string::npos);
+  EXPECT_NE(out.find("Max nodes per face    : 4"), std::string::npos);
   EXPECT_NE(out.find("Grid type             : curvilinear"), std::string::npos);
   EXPECT_NE(out.find("Coordinate type       : spherical"), std::string::npos);
   EXPECT_NE(out.find("Global closure        : closed"), std::string::npos);
+  EXPECT_NE(out.find("Subgrid obstructions  : x direction only"),
+            std::string::npos);
   EXPECT_NE(out.find("Bathymetry source     : ETOPO"), std::string::npos);
   EXPECT_NE(out.find("Boundary source       : GSHHG"), std::string::npos);
   EXPECT_NE(out.find("Conventions           : UGRID-1.0"), std::string::npos);
-  EXPECT_NE(out.find("History               : 2026-11-02 created"),
-            std::string::npos);
-  EXPECT_NE(out.find("Subgrid obstructions  : x direction only"),
+  EXPECT_NE(out.find("History / creation    : 2026-11-02 created UTC"),
             std::string::npos);
 }
 

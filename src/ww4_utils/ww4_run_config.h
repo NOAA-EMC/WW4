@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-10-28
+ * @date Last update : 2026-11-02
  */
 
 #pragma once
@@ -238,7 +238,7 @@ struct HomogeneousDataPoint {
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-11-02
  * @var RunConfig::calendarType
  * @brief Calendar type.
  * @var RunConfig::produceStdOut
@@ -319,7 +319,7 @@ struct RunConfig {
   bool sourceTerms = true;
 
   std::string gridFile;
-  bool printGridMeta = true;
+  bool printGridMeta = false;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;

@@ -17,7 +17,7 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-10-28
+ * @date Last update : 2026-11-02
  */
 
 #include "ww4_utils/ww4_run_config.h"
@@ -80,7 +80,7 @@ TEST(RunConfigTest, NonDefaultConfig) {
 }
 
 TEST(RunConfigTest, PrintGridMetaParsing) {
-  // Case 1: Default to true when omitted
+  // Case 1: Default to false when omitted
   {
     const std::string filename = "test_print_meta_default.yaml";
     std::ofstream file(filename);
@@ -104,11 +104,11 @@ TEST(RunConfigTest, PrintGridMetaParsing) {
 
     const auto config = loadRunConfig(filename, std::cerr);
     ASSERT_TRUE(config.has_value());
-    EXPECT_TRUE(config->printGridMeta);
+    EXPECT_FALSE(config->printGridMeta);
 
     std::stringstream ss;
     reportRunConfig(*config, ss);
-    EXPECT_NE(ss.str().find("Print grid metadata      : yes"),
+    EXPECT_NE(ss.str().find("Print grid metadata      : no"),
               std::string::npos);
 
     std::remove(filename.c_str());

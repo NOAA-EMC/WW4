@@ -44,9 +44,11 @@ TEST(SolverUQInitTest, BasicExecutionAndOutput) {
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
   EXPECT_NE(output.find("Processing the grid:"), std::string::npos);
-  EXPECT_NE(output.find("     Grid file: my_uq_grid.nc"), std::string::npos);
+  EXPECT_NE(output.find("     Grid file                : my_uq_grid.nc"),
+            std::string::npos);
   EXPECT_NE(output.find("     Grid metadata:"), std::string::npos);
-  EXPECT_NE(output.find("Grid dimensions       : 10 x 10"), std::string::npos);
+  EXPECT_NE(output.find("Grid dimensions       : NX = 10, NY = 10"),
+            std::string::npos);
 
   std::remove("my_uq_grid.nc");
   resetInternalState();
@@ -65,7 +67,7 @@ TEST(SolverUQInitTest, OutputWithoutMetadataWhenDisabled) {
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
   EXPECT_NE(output.find("Processing the grid:"), std::string::npos);
-  EXPECT_NE(output.find("     Grid file: my_uq_grid_nometa.nc"),
+  EXPECT_NE(output.find("     Grid file                : my_uq_grid_nometa.nc"),
             std::string::npos);
   EXPECT_EQ(output.find("     Grid metadata:"), std::string::npos);
 

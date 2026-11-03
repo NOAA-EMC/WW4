@@ -120,8 +120,8 @@ grid:
   grid_file: "ww4_grid_ugrid.nc"
 
   # Option for optional printing of metadata from the grid file after reading.
-  # Options: "yes" (default), "no"
-  print_meta: "yes"
+  # Options: "no" (default), "yes"
+  print_meta: "no"
 
 forcing:
   # Mandatory input field options.
