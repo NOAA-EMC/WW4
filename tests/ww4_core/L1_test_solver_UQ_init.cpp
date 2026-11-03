@@ -163,6 +163,8 @@ TEST(SolverUQInitTest, PartitionFileNotFoundLogsErrorAndComputesPartitions) {
   // Ensure message "Creating the partition map for NNN partitions" is written
   EXPECT_NE(output.find("Creating the partition map for 5 partitions"),
             std::string::npos);
+  EXPECT_NE(output.find("Writing partition file with 1 partition map"),
+            std::string::npos);
 
   // Check that the new partition file was written
   EXPECT_TRUE(std::filesystem::exists("my_uq_grid_nopart.partitions.nc"));
@@ -236,6 +238,8 @@ TEST(SolverUQInitTest,
                         "my_uq_grid_mismatch.partitions.nc"),
             std::string::npos);
   EXPECT_NE(output.find("Creating the partition map for 4 partitions"),
+            std::string::npos);
+  EXPECT_NE(output.find("Writing partition file with 1 partition map"),
             std::string::npos);
 
   // Check that the new partition file was updated with 4 partitions

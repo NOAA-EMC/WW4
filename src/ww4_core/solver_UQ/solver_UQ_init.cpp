@@ -249,7 +249,16 @@ void solver_UQ_init(std::ostream &os) {
       std::vector<int32_t> map32(partitionMap.begin(), partitionMap.end());
       int writeStatus = ww4::io::writeUQpartitionMapNetCDF(
           partFilePath, ugrid, getRunConfig().numRanksCompute, map32);
-      (void)writeStatus;
+      if (writeStatus == 0) {
+        const std::string writeMsg =
+            "Writing partition file with 1 partition map";
+        if (getRunConfig().produceStdOut) {
+          os << "     " << writeMsg << std::endl;
+        }
+        if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+          getLogFileStream() << "     " << writeMsg << std::endl;
+        }
+      }
     }
   } else {
     // Populate partition map from successfully read file
