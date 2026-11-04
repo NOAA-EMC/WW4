@@ -28,7 +28,7 @@ You can run the linting and formatting tools locally to verify your changes befo
 2.  **Static Analysis (Cppcheck):**
     To run static analysis on the codebase:
     ```bash
-    cppcheck --enable=all --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=unusedFunction --suppress=missingInclude -I src src
+    cppcheck --enable=all --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=unusedFunction --suppress=missingInclude --suppress=checkersReport --suppress=normalCheckLevelMaxBranches -I src src
     ```
 
 ### Running Linting Automatically
