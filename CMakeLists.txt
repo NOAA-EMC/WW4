@@ -179,9 +179,19 @@ target_link_libraries(ww4_standalone PRIVATE ww4_core ww4_utils)
 target_compile_options(ww4_standalone PRIVATE ${WW4_COMMON_COMPILE_OPTIONS})
 target_link_options(ww4_standalone PRIVATE ${WW4_COMMON_LINK_OPTIONS})
 
-# Place the main program in the exe directory
+# Executable: ww4_grid_inspect
+add_executable(
+    ww4_grid_inspect
+    src/ww4_progs/ww4_grid_inspect.cpp
+)
+target_link_libraries(ww4_grid_inspect PRIVATE ww4_core ww4_utils)
+target_compile_options(ww4_grid_inspect PRIVATE ${WW4_COMMON_COMPILE_OPTIONS})
+target_link_options(ww4_grid_inspect PRIVATE ${WW4_COMMON_LINK_OPTIONS})
+
+# Place the main programs in the exe directory
 set_target_properties(
     ww4_standalone
+    ww4_grid_inspect
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/exe
 )
 
@@ -253,6 +263,8 @@ if(WW4_ENABLE_TESTING)
     target_sources(test_ww4_standalone_args PRIVATE src/ww4_progs/ww4_standalone_args.cpp)
     ww4_add_test(test_ww4_standalone tests/ww4_core/L1_test_ww4_standalone.cpp ww4_core)
     target_compile_definitions(test_ww4_standalone PRIVATE STANDALONE_EXE_PATH="${CMAKE_SOURCE_DIR}/exe/ww4_standalone")
+    ww4_add_test(test_ww4_grid_inspect tests/ww4_core/L1_test_ww4_grid_inspect.cpp ww4_core)
+    target_compile_definitions(test_ww4_grid_inspect PRIVATE GRID_INSPECT_EXE_PATH="${CMAKE_SOURCE_DIR}/exe/ww4_grid_inspect")
     ww4_add_test(test_w4core_init tests/ww4_core/L1_test_w4core_init.cpp ww4_core)
     ww4_add_test(test_w4core_wave tests/ww4_core/L1_test_w4core_wave.cpp ww4_core)
     ww4_add_test(test_w4core_finalize tests/ww4_core/L1_test_w4core_finalize.cpp ww4_core)
