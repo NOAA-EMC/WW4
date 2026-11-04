@@ -42,7 +42,7 @@ TEST(SolverUQInitTest, BasicExecutionAndOutput) {
   getMutableRunConfig().printGridMeta = true;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid.nc", 10, 10); }
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid.nc", 10, 10);
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
@@ -65,7 +65,7 @@ TEST(SolverUQInitTest, OutputWithoutMetadataWhenDisabled) {
   getMutableRunConfig().printGridMeta = false;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nometa.nc", 10, 10); }
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nometa.nc", 10, 10);
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
@@ -146,7 +146,7 @@ TEST(SolverUQInitTest, PartitionFileNotFoundLogsErrorAndComputesPartitions) {
   getMutableRunConfig().numRanksCompute = 5;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nopart.nc", 10, 10); }
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nopart.nc", 10, 10);
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
