@@ -21,7 +21,7 @@ WAVEWATCH IV provides additional tools to support developers during the coding p
 To check if unit tests are available for a specific file and its identified routines:
 
 ```bash
-./tools/ww4_test_check --file <filename>
+./tools/ww4_test_check.sh --file <filename>
 ```
 *Note: The filename should be provided without extension (e.g., `time_management`).*
 
@@ -30,6 +30,23 @@ This tool will:
 - Isolate user-defined routines (functions and methods).
 - Check the `tests/` directory for corresponding unit tests.
 - Report the test coverage status for each identified routine.
+
+## UQ Domain Partitioning Plotting Tool
+
+To plot or animate the domain partitioning maps stored in a NetCDF partition file:
+
+```bash
+./tools/plot_UQ_domains.sh --help
+./tools/plot_UQ_domains.sh --input <partition_file.nc> [--type <format>] [--index <idx>] [--animate]
+```
+
+This tool:
+- Reads the NetCDF partition output file.
+- Displays the partition map on a Cartesian grid with equal aspect ratio.
+- Asks for graphic output type (e.g. `--type png`, `jpg`, `pdf`, `gif`) rather than a full file path.
+- Always generates the output file in the current working directory from which the tool is executed, replacing the input `.nc` extension with the graphic extension.
+- Supports single map slice extraction (defaulting to the final map).
+- Generates animated GIFs showing the evolution across all stored maps when `--type gif` or `--animate` is specified.
 
 #
 <p align="right">

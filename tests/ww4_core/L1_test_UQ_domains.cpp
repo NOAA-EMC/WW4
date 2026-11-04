@@ -17,7 +17,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-04
  */
 
 // Routine coverage references for anonymous namespace helper functions:
@@ -176,6 +176,40 @@ TEST(UQDomainsTest, PartitionGlobalGridZeroIterations) {
     }
   }
   EXPECT_EQ(unique_partitions.size(), static_cast<size_t>(num_partitions));
+}
+
+TEST(UQDomainsTest, PartitionGlobalGridConsecutiveMapRecording) {
+  int nx = 8;
+  int ny = 8;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  // Set irregular land mask to produce iterations during refinement
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 3; ++x) {
+      land_sea_map[y * nx + x] = 0;
+    }
+  }
+
+  int num_partitions = 3;
+  int max_iterations = 50;
+
+  std::vector<std::vector<int>> recorded_maps;
+  auto recorder = [&](std::span<const int> map) {
+    recorded_maps.emplace_back(map.begin(), map.end());
+  };
+
+  std::vector<int> final_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, max_iterations,
+                          nullptr, false, recorder);
+
+  ASSERT_FALSE(recorded_maps.empty());
+  // The final recorded map must match the return value
+  EXPECT_EQ(recorded_maps.back(), final_map);
+
+  // Verify that no two consecutive recorded maps are identical
+  for (size_t i = 1; i < recorded_maps.size(); ++i) {
+    EXPECT_NE(recorded_maps[i], recorded_maps[i - 1]);
+  }
 }
 
 TEST(UQDomainsTest, ReassignDisconnectedPieces) {

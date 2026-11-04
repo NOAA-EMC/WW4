@@ -20,11 +20,12 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-04
  */
 
 #pragma once
 
+#include <functional>
 #include <span>
 #include <vector>
 
@@ -99,10 +100,11 @@ struct DomainPartition {
  * @return Vector of size nx * ny containing partition IDs (1 to num_partitions
  * for sea points, 0 for land).
  */
-std::vector<int>
-partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
-                    int num_partitions, int max_iterations = 100,
-                    int *actual_iterations = nullptr, bool is_global = false);
+std::vector<int> partitionGlobalGrid(
+    int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
+    int max_iterations = 100, int *actual_iterations = nullptr,
+    bool is_global = false,
+    std::function<void(std::span<const int>)> map_recorder = nullptr);
 
 } // namespace UQ_utils
 } // namespace ww4_utils
