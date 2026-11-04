@@ -17,4 +17,4 @@ jobs:
         find src tests -name "*.cpp" -o -name "*.h" | xargs clang-format --dry-run --Werror
     - name: Run Cppcheck
       run: |
-        cppcheck --enable=all --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=unusedFunction --suppress=missingInclude -I src --error-exitcode=1 src
+        cppcheck --enable=all --suppress=missingIncludeSystem --suppress=unmatchedSuppression --suppress=unusedFunction --suppress=missingInclude --suppress=checkersReport --suppress=normalCheckLevelMaxBranches -I src --error-exitcode=1 src
