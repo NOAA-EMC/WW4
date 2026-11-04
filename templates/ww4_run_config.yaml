@@ -126,7 +126,7 @@ grid:
   # Option to save each consecutive map generated during the iterative
   # domain decomposition development process to the partition output file.
   # Options: "no" (default), "yes"
-  intermediate_par: "no"
+  intermediate_maps: "no"
 
 forcing:
   # Mandatory input field options.

@@ -291,13 +291,13 @@ TEST(SolverUQInitTest, PartitionFileCorruptedLogsErrorAndDoesNotAbort) {
   resetInternalState();
 }
 
-TEST(SolverUQInitTest, IntermediateParWritesMultipleMaps) {
+TEST(SolverUQInitTest, IntermediateMapsWritesMultipleMaps) {
   resetInternalState();
   std::ostringstream ss;
   getMutableRunConfig().produceStdOut = true;
   getMutableRunConfig().gridFile = "my_uq_grid_interm.nc";
   getMutableRunConfig().numRanksCompute = 4;
-  getMutableRunConfig().intermediatePar = true;
+  getMutableRunConfig().intermediateMaps = true;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
   ww4::test_helpers::createMinimalUgridFile("my_uq_grid_interm.nc", 12, 12);

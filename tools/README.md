@@ -36,15 +36,17 @@ This tool will:
 To plot or animate the domain partitioning maps stored in a NetCDF partition file:
 
 ```bash
-./tools/plot_UQ_domains.sh --input <partition_file.nc> [--output <image_file>] [--index <idx>] [--animate]
+./tools/plot_UQ_domains.sh --help
+./tools/plot_UQ_domains.sh --input <partition_file.nc> [--type <format>] [--index <idx>] [--animate]
 ```
 
 This tool:
 - Reads the NetCDF partition output file.
 - Displays the partition map on a Cartesian grid with equal aspect ratio.
+- Asks for graphic output type (e.g. `--type png`, `jpg`, `pdf`, `gif`) rather than a full file path.
+- Always generates the output file in the current working directory from which the tool is executed, replacing the input `.nc` extension with the graphic extension.
 - Supports single map slice extraction (defaulting to the final map).
-- Supports various graphic formats (e.g., `.png`, `.jpg`, `.pdf`, `.gif`).
-- Generates animated GIFs showing the evolution across all stored maps when `--animate` or `.gif` output is specified.
+- Generates animated GIFs showing the evolution across all stored maps when `--type gif` or `--animate` is specified.
 
 #
 <p align="right">

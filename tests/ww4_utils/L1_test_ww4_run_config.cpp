@@ -180,10 +180,10 @@ TEST(RunConfigTest, PrintGridMetaParsing) {
   }
 }
 
-TEST(RunConfigTest, IntermediateParParsing) {
+TEST(RunConfigTest, IntermediateMapsParsing) {
   // Case 1: Default to false when omitted
   {
-    const std::string filename = "test_intermediate_par_default.yaml";
+    const std::string filename = "test_intermediate_maps_default.yaml";
     std::ofstream file(filename);
     file << "grid:\n";
     file << "  grid_file: test_grid.nc\n";
@@ -205,7 +205,7 @@ TEST(RunConfigTest, IntermediateParParsing) {
 
     const auto config = loadRunConfig(filename, std::cerr);
     ASSERT_TRUE(config.has_value());
-    EXPECT_FALSE(config->intermediatePar);
+    EXPECT_FALSE(config->intermediateMaps);
 
     std::stringstream ss;
     reportRunConfig(*config, ss);
@@ -217,11 +217,11 @@ TEST(RunConfigTest, IntermediateParParsing) {
 
   // Case 2: Explicitly "yes"
   {
-    const std::string filename = "test_intermediate_par_yes.yaml";
+    const std::string filename = "test_intermediate_maps_yes.yaml";
     std::ofstream file(filename);
     file << "grid:\n";
     file << "  grid_file: test_grid.nc\n";
-    file << "  intermediate_par: \"yes\"\n";
+    file << "  intermediate_maps: \"yes\"\n";
     file << "general:\n";
     file << "  time_step: 3600.0\n";
     file << "physics:\n";
@@ -240,7 +240,7 @@ TEST(RunConfigTest, IntermediateParParsing) {
 
     const auto config = loadRunConfig(filename, std::cerr);
     ASSERT_TRUE(config.has_value());
-    EXPECT_TRUE(config->intermediatePar);
+    EXPECT_TRUE(config->intermediateMaps);
 
     std::stringstream ss;
     reportRunConfig(*config, ss);

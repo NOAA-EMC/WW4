@@ -296,9 +296,9 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
         config.printGridMeta =
             (cleanValue(node["print_meta"].as<std::string>()) == "yes");
       }
-      if (node["intermediate_par"]) {
-        config.intermediatePar =
-            (cleanValue(node["intermediate_par"].as<std::string>()) == "yes");
+      if (node["intermediate_maps"]) {
+        config.intermediateMaps =
+            (cleanValue(node["intermediate_maps"].as<std::string>()) == "yes");
       }
     }
 
@@ -726,7 +726,7 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
   os << "     Print grid metadata      : "
      << (config.printGridMeta ? "yes" : "no") << std::endl;
   os << "     Save consecutive parts   : "
-     << (config.intermediatePar ? "yes" : "no") << std::endl;
+     << (config.intermediateMaps ? "yes" : "no") << std::endl;
 
   std::string solverStr = "undefined";
   if (config.solver == SolverType::UQ) {

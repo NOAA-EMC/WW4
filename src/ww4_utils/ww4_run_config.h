@@ -259,7 +259,7 @@ struct HomogeneousDataPoint {
  * @brief Grid file name.
  * @var RunConfig::printGridMeta
  * @brief Optional printing of grid file metadata flag.
- * @var RunConfig::intermediatePar
+ * @var RunConfig::intermediateMaps
  * @brief Option to save each consecutive map during partitioning to file flag.
  * @var RunConfig::sourceTerms
  * @brief Source terms flag.
@@ -322,7 +322,7 @@ struct RunConfig {
 
   std::string gridFile;
   bool printGridMeta = false;
-  bool intermediatePar = false;
+  bool intermediateMaps = false;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;

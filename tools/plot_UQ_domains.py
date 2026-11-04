@@ -13,13 +13,16 @@
 
 Usage
 -----
-Run the tool from the repository root:
+Run the tool from the repository root or any directory:
     python3 tools/plot_UQ_domains.py --input <partition_file.nc> [options]
 
 Options:
+  --help, -h        Show this help message and exit.
   --input, -i       Path to the NetCDF partition file (required).
-  --output, -o      Output image file path (e.g. partition_map.png, .pdf, .gif).
-                    If omitted, display interactively or default to <input_stem>.png.
+  --type, -t        Output graphic file format/type (e.g. png, jpg, jpeg, pdf,
+                    eps, gif). Default is 'png'. Output file is saved in the
+                    current working directory, replacing the input file's .nc
+                    extension with the chosen graphic format extension.
   --index           Map slice index to plot (0-based, or -1 for the last map).
                     Default is -1 (last map).
   --animate         Generate an animated GIF showing the evolution across all maps.
@@ -152,7 +155,6 @@ def plot_single_map(
     plt.tight_layout()
 
     if output_path is not None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(str(output_path), dpi=150)
         plt.close(fig)
         print(f"Saved plot to: {output_path}")
@@ -226,7 +228,6 @@ def create_animation(
         frames.append(np.array(Image.open(buf)))
 
     duration_ms = int(1000.0 / max(1, fps))
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     iio.imwrite(
         str(output_path),
         frames,
@@ -251,11 +252,11 @@ def main():
         help="Path to the NetCDF partition file.",
     )
     parser.add_argument(
-        "--output",
-        "-o",
+        "--type",
+        "-t",
         type=str,
-        default=None,
-        help="Path to save output graphic (.png, .jpg, .pdf, .gif, etc.).",
+        default="png",
+        help="Output graphic format (e.g. png, jpg, jpeg, pdf, eps, gif). Default: png.",
     )
     parser.add_argument(
         "--index",
@@ -288,17 +289,32 @@ def main():
     if num_partitions <= 0:
         num_partitions = int(np.max(maps))
 
-    output_path = Path(args.output) if args.output else None
+    # Clean and determine output file extension
+    out_ext = args.type.strip().lower().lstrip(".")
+    if not out_ext:
+        out_ext = "png"
 
-    # Animate if requested or if output filename ends in .gif
-    is_gif = output_path is not None and output_path.suffix.lower() == ".gif"
+    # Derive output filename from input file name, replacing .nc with graphic extension
+    input_filename = input_path.name
+    if input_filename.endswith(".nc"):
+        base_name = input_filename[:-3]
+    else:
+        base_name = input_path.stem
+    output_filename = f"{base_name}.{out_ext}"
+
+    # Always produce output in the current working directory where the tool is executed
+    output_path = Path.cwd() / output_filename
+
+    # Animate if requested or if output format is gif
+    is_gif = out_ext == "gif"
     if args.animate or is_gif:
         if total_maps < 2:
             print(
                 "Notice: File contains only 1 partition map. Generating single image/gif frame."
             )
-        if output_path is None:
-            output_path = input_path.with_suffix(".gif")
+        if not output_filename.endswith(".gif"):
+            output_path = Path.cwd() / f"{base_name}.gif"
+
         create_animation(
             maps,
             num_partitions,

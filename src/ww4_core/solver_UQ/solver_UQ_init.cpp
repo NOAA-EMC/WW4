@@ -243,7 +243,7 @@ void solver_UQ_init(std::ostream &os) {
     std::vector<int32_t> lastWrittenMap;
     std::function<void(std::span<const int>)> recorder = nullptr;
 
-    if (getRunConfig().intermediatePar) {
+    if (getRunConfig().intermediateMaps) {
       static_cast<void>(ww4::io::openUQpartitionMapFile(
           partFilePath, ugrid, getRunConfig().numRanksCompute, ncid));
       if (ncid >= 0) {
@@ -271,7 +271,7 @@ void solver_UQ_init(std::ostream &os) {
     if (!partitionMap.empty()) {
       std::vector<int32_t> map32(partitionMap.begin(), partitionMap.end());
 
-      if (getRunConfig().intermediatePar) {
+      if (getRunConfig().intermediateMaps) {
         if (ncid >= 0) {
           // Always write the final mask if not already the last written mask
           if (lastWrittenMap.empty() || lastWrittenMap != map32) {
