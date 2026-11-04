@@ -3,7 +3,7 @@
 #      | WAVEWATCH IV, open source, code management by NOAA/NWS |
 #      +--------------------------------------------------------+
 #
-# @file ww4_test_check
+# @file ww4_test_check.sh
 # @brief Shell wrapper for the WAVEWATCH IV (WW4) test check tool.
 # @details This script identifies the repository root and executes the
 #          underlying Python unit test check tool.
@@ -11,7 +11,7 @@
 # Usage
 # -----
 # Run the unit test check tool from any directory within the clone:
-#    ww4_test_check --file <filename>
+#    ww4_test_check.sh --file <filename>
 #
 # Options:
 #   --file FILE       The filename to check (without extension).
@@ -23,7 +23,7 @@
 # @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 # @author Contributors: Jules (Agentic AI)
 # @date Initial, 2026-03-30
-# @date Last Update, 2026-05-26
+# @date Last Update, 2026-11-04
 
 # Identify the repository root (parent of the directory containing this script)
 TOOLS_DIR=$(cd "$(dirname "$0")" && pwd)

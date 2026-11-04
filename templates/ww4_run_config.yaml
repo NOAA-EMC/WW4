@@ -123,6 +123,11 @@ grid:
   # Options: "no" (default), "yes"
   print_meta: "no"
 
+  # Option to save each consecutive map generated during the iterative
+  # domain decomposition development process to the partition output file.
+  # Options: "no" (default), "yes"
+  intermediate_par: "no"
+
 forcing:
   # Mandatory input field options.
   # Options: "none", "from_file", "from_coupling", "homogeneous", "from_grid"
