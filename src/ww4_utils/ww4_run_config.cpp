@@ -17,7 +17,7 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-02
+ * @date Last update : 2026-11-04
  */
 
 #include "ww4_utils/ww4_run_config.h"
@@ -295,6 +295,10 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
       if (node["print_meta"]) {
         config.printGridMeta =
             (cleanValue(node["print_meta"].as<std::string>()) == "yes");
+      }
+      if (node["intermediate_maps"]) {
+        config.intermediateMaps =
+            (cleanValue(node["intermediate_maps"].as<std::string>()) == "yes");
       }
     }
 
@@ -721,6 +725,8 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
      << (config.gridFile.empty() ? "none" : config.gridFile) << std::endl;
   os << "     Print grid metadata      : "
      << (config.printGridMeta ? "yes" : "no") << std::endl;
+  os << "     Save consecutive parts   : "
+     << (config.intermediateMaps ? "yes" : "no") << std::endl;
 
   std::string solverStr = "undefined";
   if (config.solver == SolverType::UQ) {

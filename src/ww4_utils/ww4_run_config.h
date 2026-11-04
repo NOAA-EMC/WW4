@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-02
+ * @date Last update : 2026-11-04
  */
 
 #pragma once
@@ -259,6 +259,8 @@ struct HomogeneousDataPoint {
  * @brief Grid file name.
  * @var RunConfig::printGridMeta
  * @brief Optional printing of grid file metadata flag.
+ * @var RunConfig::intermediateMaps
+ * @brief Option to save each consecutive map during partitioning to file flag.
  * @var RunConfig::sourceTerms
  * @brief Source terms flag.
  * @var RunConfig::solver
@@ -320,6 +322,7 @@ struct RunConfig {
 
   std::string gridFile;
   bool printGridMeta = false;
+  bool intermediateMaps = false;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;

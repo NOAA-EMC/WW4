@@ -20,13 +20,14 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-04
  */
 
 #include "ww4_core/solver_UQ/UQ_domains.h"
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <set>
 #include <span>
 #include <vector>
@@ -194,11 +195,10 @@ void recursiveBisectDomain(int x_min, int x_max, int y_min, int y_max, int nx,
  * @param[in,out] partition_map Partition IDs vector to refine in place.
  * @return Number of actual iteration passes executed until convergence or cap.
  */
-int refinePartitionsIteratively(int nx, int ny,
-                                std::span<const int> land_sea_map,
-                                int num_partitions, int max_iterations,
-                                std::vector<int> &partition_map,
-                                bool is_global = false) {
+int refinePartitionsIteratively(
+    int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
+    int max_iterations, std::vector<int> &partition_map, bool is_global = false,
+    const std::function<void()> &record_hook = nullptr) {
   // Return early if single partition or non-positive max_iterations specified
   if (num_partitions <= 1 || max_iterations <= 0) {
     return 0;
@@ -301,6 +301,11 @@ int refinePartitionsIteratively(int nx, int ny,
           }
         }
       }
+    }
+
+    // Record intermediate map if swaps occurred
+    if (swaps_made > 0 && record_hook) {
+      record_hook();
     }
 
     // === Section: Iteration Convergence Determination =======================
@@ -794,10 +799,11 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
 
 // --- partitionGlobalGrid ----------------------------------------------------
 
-std::vector<int> partitionGlobalGrid(int nx, int ny,
-                                     std::span<const int> land_sea_map,
-                                     int num_partitions, int max_iterations,
-                                     int *actual_iterations, bool is_global) {
+std::vector<int>
+partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
+                    int num_partitions, int max_iterations,
+                    int *actual_iterations, bool is_global,
+                    std::function<void(std::span<const int>)> map_recorder) {
   if (actual_iterations) {
     *actual_iterations = 0;
   }
@@ -809,21 +815,38 @@ std::vector<int> partitionGlobalGrid(int nx, int ny,
 
   std::vector<int> partition_map(nx * ny, 0);
 
+  // Helper to record consecutive map if it differs from the last recorded map
+  std::vector<int> last_recorded_map;
+  auto record_map = [&]() {
+    if (!map_recorder) {
+      return;
+    }
+    if (last_recorded_map.empty() || last_recorded_map != partition_map) {
+      last_recorded_map = partition_map;
+      map_recorder(partition_map);
+    }
+  };
+
   recursiveBisectDomain(0, nx - 1, 0, ny - 1, nx, land_sea_map, num_partitions,
                         1, partition_map);
+  // Record initial bisection map
+  record_map();
 
   if (num_partitions > 1) {
     if (max_iterations > 0) {
-      int iters_run =
-          refinePartitionsIteratively(nx, ny, land_sea_map, num_partitions,
-                                      max_iterations, partition_map, is_global);
+      int iters_run = refinePartitionsIteratively(
+          nx, ny, land_sea_map, num_partitions, max_iterations, partition_map,
+          is_global, record_map);
       if (actual_iterations) {
         *actual_iterations = iters_run;
       }
     }
 
-    reassignDisconnectedPieces(nx, ny, land_sea_map, num_partitions,
-                               partition_map, is_global);
+    int reassigned = reassignDisconnectedPieces(
+        nx, ny, land_sea_map, num_partitions, partition_map, is_global);
+    if (reassigned > 0) {
+      record_map();
+    }
 
     for (int split_pass = 0; split_pass < num_partitions; ++split_pass) {
       bool split_done = splitIsolatedPartitions(
@@ -831,14 +854,22 @@ std::vector<int> partitionGlobalGrid(int nx, int ny,
       if (!split_done) {
         break;
       }
+      record_map();
       if (max_iterations > 0) {
         refinePartitionsIteratively(nx, ny, land_sea_map, num_partitions,
-                                    max_iterations, partition_map, is_global);
+                                    max_iterations, partition_map, is_global,
+                                    record_map);
       }
-      reassignDisconnectedPieces(nx, ny, land_sea_map, num_partitions,
-                                 partition_map, is_global);
+      int reassigned_after_split = reassignDisconnectedPieces(
+          nx, ny, land_sea_map, num_partitions, partition_map, is_global);
+      if (reassigned_after_split > 0) {
+        record_map();
+      }
     }
   }
+
+  // Final check to record map if not already recorded
+  record_map();
 
   return partition_map;
 }

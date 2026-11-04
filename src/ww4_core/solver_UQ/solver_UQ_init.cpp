@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-04
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -238,27 +238,75 @@ void solver_UQ_init(std::ostream &os) {
       getLogFileStream() << "     " << createMsg << std::endl;
     }
 
+    int ncid = -1;
+    std::size_t map_index = 0;
+    std::vector<int32_t> lastWrittenMap;
+    std::function<void(std::span<const int>)> recorder = nullptr;
+
+    if (getRunConfig().intermediateMaps) {
+      static_cast<void>(ww4::io::openUQpartitionMapFile(
+          partFilePath, ugrid, getRunConfig().numRanksCompute, ncid));
+      if (ncid >= 0) {
+        recorder = [&](std::span<const int> curMap) {
+          std::vector<int32_t> map32(curMap.begin(), curMap.end());
+          if (lastWrittenMap.empty() || lastWrittenMap != map32) {
+            int write_status =
+                ww4::io::writeSingleUQpartitionMap(ncid, map32, map_index);
+            if (write_status == 0) {
+              lastWrittenMap = std::move(map32);
+            }
+          }
+        };
+      }
+    }
+
     // Compute partition map using domain partitioning routine
     partitionMap = ww4_utils::UQ_utils::partitionGlobalGrid(
         static_cast<int>(ugrid.nx), static_cast<int>(ugrid.ny),
         fullGrid.landMask, getRunConfig().numRanksCompute, 100, nullptr,
-        rectData.isGlobal);
+        rectData.isGlobal, recorder);
 
-    // If partition map is successfully created, write a new partition file
+    // If partition map is successfully created, write or finalize partition
+    // file
     if (!partitionMap.empty()) {
       std::vector<int32_t> map32(partitionMap.begin(), partitionMap.end());
-      int writeStatus = ww4::io::writeUQpartitionMapNetCDF(
-          partFilePath, ugrid, getRunConfig().numRanksCompute, map32);
-      if (writeStatus == 0) {
-        const std::string writeMsg =
-            "Writing partition file with 1 partition map";
-        if (getRunConfig().produceStdOut) {
-          os << "     " << writeMsg << std::endl;
+
+      if (getRunConfig().intermediateMaps) {
+        if (ncid >= 0) {
+          // Always write the final mask if not already the last written mask
+          if (lastWrittenMap.empty() || lastWrittenMap != map32) {
+            static_cast<void>(
+                ww4::io::writeSingleUQpartitionMap(ncid, map32, map_index));
+            lastWrittenMap = map32;
+          }
+          static_cast<void>(ww4::io::closeUQpartitionMapFile(ncid));
+
+          const std::string writeMsg =
+              "Writing partition file with " + std::to_string(map_index) +
+              " partition " + (map_index == 1 ? "map" : "maps");
+          if (getRunConfig().produceStdOut) {
+            os << "     " << writeMsg << std::endl;
+          }
+          if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+            getLogFileStream() << "     " << writeMsg << std::endl;
+          }
         }
-        if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
-          getLogFileStream() << "     " << writeMsg << std::endl;
+      } else {
+        int writeStatus = ww4::io::writeUQpartitionMapNetCDF(
+            partFilePath, ugrid, getRunConfig().numRanksCompute, map32);
+        if (writeStatus == 0) {
+          const std::string writeMsg =
+              "Writing partition file with 1 partition map";
+          if (getRunConfig().produceStdOut) {
+            os << "     " << writeMsg << std::endl;
+          }
+          if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+            getLogFileStream() << "     " << writeMsg << std::endl;
+          }
         }
       }
+    } else if (ncid >= 0) {
+      static_cast<void>(ww4::io::closeUQpartitionMapFile(ncid));
     }
   } else {
     // Populate partition map from successfully read file

@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-04
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -42,7 +42,7 @@ TEST(SolverUQInitTest, BasicExecutionAndOutput) {
   getMutableRunConfig().printGridMeta = true;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid.nc", 10, 10); }
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid.nc", 10, 10);
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
@@ -65,7 +65,7 @@ TEST(SolverUQInitTest, OutputWithoutMetadataWhenDisabled) {
   getMutableRunConfig().printGridMeta = false;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nometa.nc", 10, 10); }
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nometa.nc", 10, 10);
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
@@ -146,7 +146,7 @@ TEST(SolverUQInitTest, PartitionFileNotFoundLogsErrorAndComputesPartitions) {
   getMutableRunConfig().numRanksCompute = 5;
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  { ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nopart.nc", 10, 10); }
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_nopart.nc", 10, 10);
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
@@ -288,6 +288,37 @@ TEST(SolverUQInitTest, PartitionFileCorruptedLogsErrorAndDoesNotAbort) {
 
   std::remove("my_uq_grid_badpart.nc");
   std::remove("my_uq_grid_badpart.partitions.nc");
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, IntermediateMapsWritesMultipleMaps) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_interm.nc";
+  getMutableRunConfig().numRanksCompute = 4;
+  getMutableRunConfig().intermediateMaps = true;
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_interm.nc", 12, 12);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find("Creating the partition map for 4 partitions"),
+            std::string::npos);
+  // Check that "Writing partition file with" is in the output
+  EXPECT_NE(output.find("Writing partition file with "), std::string::npos);
+
+  // Read partition file to verify maps
+  ww4::io::PartitionMapData readData;
+  ASSERT_EQ(ww4::io::readUQpartitionMapNetCDF("my_uq_grid_interm.partitions.nc",
+                                              readData),
+            0);
+  EXPECT_EQ(readData.num_partitions, 4);
+  EXPECT_GE(readData.num_maps, 1u);
+
+  std::remove("my_uq_grid_interm.nc");
+  std::remove("my_uq_grid_interm.partitions.nc");
   resetInternalState();
 }
 
