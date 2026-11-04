@@ -41,9 +41,9 @@ from pathlib import Path
 
 try:
     import matplotlib.pyplot as plt
-    from matplotlib import colors
     import netCDF4 as nc
     import numpy as np
+    from matplotlib import colors
 except ImportError as err:
     print(
         f"Error: Missing required Python dependencies ({err}). Please install netCDF4, matplotlib, numpy."
@@ -92,8 +92,7 @@ def build_discrete_cmap(num_partitions: int):
     Build a discrete colormap and boundary norm where 0 is land (light gray)
     and 1..num_partitions are distinct colors.
     """
-    if num_partitions < 1:
-        num_partitions = 1
+    num_partitions = max(num_partitions, 1)
 
     # Base qualitative colormap
     base_cmap = plt.get_cmap("tab20" if num_partitions <= 20 else "gist_ncar")
@@ -182,6 +181,7 @@ def create_animation(
             )
 
     import io
+
     from PIL import Image
 
     total_maps = maps.shape[0]
@@ -280,7 +280,7 @@ def main():
 
     try:
         maps, num_partitions, grid_title = read_partition_file(input_path)
-    except Exception as e:
+    except (OSError, KeyError, ValueError) as e:
         print(f"Error reading partition file: {e}")
         sys.exit(1)
 
