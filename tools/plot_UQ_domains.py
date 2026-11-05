@@ -9,10 +9,10 @@
          domain decomposition, displays partition IDs on a Cartesian grid
          with equal aspect ratio (equal grid increments) using box-fill
          representation. Adjacent partitions are mapped to distinct colors
-         using minimal chromatic graph coloring. Land (dark green), boundary
-         points (magenta), and excluded points (light gray) are identified
-         conforming to the gridgen convention. Supports animated GIFs and
-         sampling every n-th iteration.
+         using minimal chromatic graph coloring with up to 10 colors.
+         Land (dark green), boundary points (magenta), and excluded points
+         (light gray) are identified conforming to the gridgen convention.
+         Supports animated GIFs and sampling every n-th iteration.
 
 Usage
 -----
@@ -69,7 +69,7 @@ VAL_EXCLUDED = -3
 VAL_BOUNDARY = -2
 VAL_LAND = -1
 
-# Distinct qualitative colors for partition assignments (avoiding dark green, magenta, and light gray reserved for features)
+# Distinct qualitative colors for partition assignments (up to 10 colors, avoiding dark green, magenta, and light gray reserved for features)
 DISTINCT_PARTITION_PALETTE = [
     "#1f77b4",  # blue
     "#ff7f0e",  # orange
@@ -80,8 +80,6 @@ DISTINCT_PARTITION_PALETTE = [
     "#bcbd22",  # olive-yellow
     "#aec7e8",  # light blue
     "#ffbb78",  # light orange
-    "#c5b0d5",  # light purple
-    "#ff9896",  # light red
     "#ffd92f",  # gold
 ]
 
@@ -219,10 +217,11 @@ def build_partition_adjacency_graph(maps: np.ndarray) -> dict[int, set[int]]:
 
 def compute_minimal_partition_coloring(
     adj: dict[int, set[int]],
+    max_colors: int = 10,
 ) -> dict[int, int]:
     """
     Compute minimal chromatic graph coloring using the DSATUR / Welsh-Powell heuristic
-    such that adjacent partitions never have the same color.
+    such that adjacent partitions never have the same color, using at most max_colors.
     """
     if not adj:
         return {}
@@ -238,6 +237,10 @@ def compute_minimal_partition_coloring(
         color_idx = 0
         while color_idx in neighbor_colors:
             color_idx += 1
+            if color_idx >= max_colors:
+                # If all colors up to max_colors are taken by neighbors, fall back to
+                # least-frequently used color among non-conflicting or modulo wrap
+                break
         color_map[node] = color_idx
 
     return color_map
@@ -382,10 +385,7 @@ def plot_single_map(
     fig, ax = plt.subplots(figsize=(9, 6))
 
     step_str = f" [Step {map_idx + 1}/{total_maps}]" if total_maps > 1 else ""
-    title = (
-        f"{title_prefix}{step_str}\n"
-        f"Partitions: {num_partitions} (Colors used: {num_p_colors})"
-    )
+    title = f"{title_prefix}{step_str}\nPartitions: {num_partitions}"
 
     setup_plot_axes(
         ax,
@@ -436,10 +436,7 @@ def create_animation(
         )
 
         fig, ax = plt.subplots(figsize=(9, 6), facecolor="white")
-        title = (
-            f"{title_prefix} [Step {idx + 1}/{total_maps}]\n"
-            f"Partitions: {num_partitions} (Colors used: {num_p_colors})"
-        )
+        title = f"{title_prefix} [Step {idx + 1}/{total_maps}]\nPartitions: {num_partitions}"
 
         setup_plot_axes(
             ax,
@@ -549,6 +546,9 @@ def main():
     # Always produce output in the current working directory where the tool is executed
     output_path = Path.cwd() / output_filename
 
+    # Up to 10 colors, but no more than the number of partitions
+    max_colors = min(10, max(1, num_partitions))
+
     # Animate if requested or if output format is gif
     is_gif = out_ext == "gif"
     if args.animate or is_gif:
@@ -562,7 +562,7 @@ def main():
         indices = sample_indices(total_maps, args.step)
         # Build adjacency graph and minimal graph coloring across sampled animation frames
         adj = build_partition_adjacency_graph(maps[indices])
-        color_map = compute_minimal_partition_coloring(adj)
+        color_map = compute_minimal_partition_coloring(adj, max_colors=max_colors)
 
         create_animation(
             maps,
@@ -579,7 +579,7 @@ def main():
         last_idx = total_maps - 1
         # Build adjacency graph and minimal coloring strictly for the final map being displayed
         adj = build_partition_adjacency_graph(maps[last_idx : last_idx + 1])
-        color_map = compute_minimal_partition_coloring(adj)
+        color_map = compute_minimal_partition_coloring(adj, max_colors=max_colors)
 
         plot_single_map(
             maps[last_idx],

@@ -64,7 +64,14 @@ struct DomainPartition {
  *
  * Refinement Stage (Iterative Boundary Balancing):
  *   After initial bisection, an iterative refinement phase adjusts partition
- *   boundaries to balance the sea point count across partitions.
+ *   boundaries to balance the sea point count across partitions. Exchanges
+ *   between partitions are performed per row or column of adjacent wet points
+ *   on the interface (unless adjacent boundary points are not wet) and only if
+ *   the exchange does not increase the imbalance between the two partitions.
+ *
+ * Protruding Point Cleanup:
+ *   Outer boundaries of partitions are checked for single protruding points,
+ *   returning such points to adjacent partitions where possible.
  *
  * Disconnected Piece Refinement Stage and Squareness Techniques (ww4_gspl):
  *   To keep partitions as square as possible and prevent jagged boundaries,
@@ -85,12 +92,10 @@ struct DomainPartition {
  *
  * Convergence Criteria:
  *   Iterative refinement runs for up to max_iterations passes. An iteration
- *   sweep evaluates every boundary sea point separating an overloaded partition
- *   (sea count > floor(total_sea / num_partitions)) from an adjacent
- * underloaded partition (sea count < ceil(total_sea / num_partitions)).
- *   Convergence is achieved when a complete grid sweep results in zero point
- *   reassignments (swaps_made == 0), indicating optimal load balance across all
- *   adjacent partition boundaries.
+ *   sweep evaluates boundaries separating an overloaded partition from an
+ * adjacent underloaded partition. Convergence is achieved when a complete grid
+ *   sweep results in zero point reassignments (swaps_made == 0), indicating
+ *   optimal load balance across all adjacent partition boundaries.
  *
  * @param nx Number of longitudinal grid columns (x-dimension).
  * @param ny Number of latitudinal grid rows (y-dimension).
@@ -105,6 +110,7 @@ struct DomainPartition {
  * unnecessary).
  * @param is_global Flag indicating whether grid has longitudinal closure
  * (360-degree wrapping across x = 0 and x = nx - 1) (default: false).
+ * @param map_recorder Optional callback invoked with partition_map snapshots.
  * @return Vector of size nx * ny containing partition IDs (1 to num_partitions
  * for sea points, 0 for land).
  */

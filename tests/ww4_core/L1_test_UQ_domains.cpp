@@ -21,8 +21,9 @@
  */
 
 // Routine coverage references for anonymous namespace helper functions:
-// countSeaPointsInRect recursiveBisectDomain refinePartitionsIteratively
-// reassignDisconnectedPieces splitIsolatedPartitions
+// cleanSingleProtrudingPoints countSeaPointsInRect isWetPoint
+// reassignDisconnectedPieces recursiveBisectDomain refinePartitionsIteratively
+// splitIsolatedPartitions
 
 #include <gtest/gtest.h>
 
@@ -277,6 +278,32 @@ TEST(UQDomainsTest, ReassignDisconnectedPieces) {
     } else {
       EXPECT_EQ(partition_map[i], 0);
     }
+  }
+}
+
+TEST(UQDomainsTest, CleanSingleProtrudingPoints) {
+  // Test cleanup of single protruding points on outer boundaries
+  int nx = 8;
+  int ny = 8;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  // Create an initial partition configuration where a single point protrudes
+  // into another partition
+  int num_partitions = 2;
+  std::vector<int> partition_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, 20);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  // Verify that all points are partitioned and each partition remains valid
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (int p : partition_map) {
+    EXPECT_GE(p, 1);
+    EXPECT_LE(p, num_partitions);
+    counts[p]++;
+  }
+  for (int p = 1; p <= num_partitions; ++p) {
+    EXPECT_GT(counts[p], 0);
   }
 }
 

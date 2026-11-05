@@ -206,6 +206,7 @@ void recursiveBisectDomain(int x_min, int x_max, int y_min, int y_max, int nx,
  * @param land_sea_map 2D land-sea mask span.
  * @param num_partitions Total number of partitions.
  * @param[in,out] partition_map Partition IDs vector to update in place.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
  * @return Total number of disconnected piece reassignments executed.
  */
 int reassignDisconnectedPieces(int nx, int ny,
@@ -381,44 +382,167 @@ int reassignDisconnectedPieces(int nx, int ny,
   return total_reassignments;
 }
 
+// --- cleanSingleProtrudingPoints --------------------------------------------
+/**
+ * @brief Checks outer boundaries of partitions for single protruding points
+ * and returns such points to the adjacent grid if possible.
+ * @details A single protruding point is defined as an active wet cell belonging
+ * to partition p that has at most 1 orthogonal neighbor in partition p (or is
+ * isolated from its partition bulk along that edge) and is adjacent to another
+ * partition. Returning such points to an adjacent partition smooths jagged
+ * outer boundaries without increasing partition imbalance when feasible.
+ *
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param[in,out] partition_map Partition IDs vector to update in place.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @return Total number of protruding points reassigned.
+ */
+int cleanSingleProtrudingPoints(int nx, int ny,
+                                std::span<const int> land_sea_map,
+                                int num_partitions,
+                                std::vector<int> &partition_map,
+                                bool is_global = false) {
+  if (num_partitions <= 1 || nx <= 0 || ny <= 0) {
+    return 0;
+  }
+
+  const int dx[] = {0, 0, -1, 1};
+  const int dy[] = {-1, 1, 0, 0};
+
+  // Count active points per partition
+  std::vector<int> partition_counts(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    int p = partition_map[i];
+    if (isWetPoint(land_sea_map[i]) && p >= 1 && p <= num_partitions) {
+      partition_counts[p]++;
+    }
+  }
+
+  int total_cleaned = 0;
+  const int max_passes = 10;
+
+  for (int pass = 0; pass < max_passes; ++pass) {
+    int cleaned_in_pass = 0;
+
+    for (int y = 0; y < ny; ++y) {
+      for (int x = 0; x < nx; ++x) {
+        int idx = y * nx + x;
+        if (!isWetPoint(land_sea_map[idx])) {
+          continue;
+        }
+
+        int p1 = partition_map[idx];
+        if (p1 < 1 || p1 > num_partitions) {
+          continue;
+        }
+
+        // Must not leave a partition with zero points
+        if (partition_counts[p1] <= 1) {
+          continue;
+        }
+
+        int count_same = 0;
+        int cand_p[4] = {0, 0, 0, 0};
+        int cand_c[4] = {0, 0, 0, 0};
+        int num_cands = 0;
+
+        for (int k = 0; k < 4; ++k) {
+          int nbr_x = x + dx[k];
+          int nbr_y = y + dy[k];
+
+          if (nbr_y < 0 || nbr_y >= ny) {
+            continue;
+          }
+          if (is_global) {
+            nbr_x = (nbr_x + nx) % nx;
+          } else if (nbr_x < 0 || nbr_x >= nx) {
+            continue;
+          }
+
+          int nbr_idx = nbr_y * nx + nbr_x;
+          if (!isWetPoint(land_sea_map[nbr_idx])) {
+            continue;
+          }
+
+          int p2 = partition_map[nbr_idx];
+          if (p2 == p1) {
+            count_same++;
+          } else if (p2 >= 1 && p2 <= num_partitions) {
+            bool found = false;
+            for (int c = 0; c < num_cands; ++c) {
+              if (cand_p[c] == p2) {
+                cand_c[c]++;
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              cand_p[num_cands] = p2;
+              cand_c[num_cands] = 1;
+              num_cands++;
+            }
+          }
+        }
+
+        // A single protruding point has at most 1 neighbor in its own partition
+        // and at least 2 neighbors in an adjacent partition (or total neighbors
+        // predominantly belonging to other partitions)
+        if (num_cands > 0 && count_same <= 1) {
+          // Find the best adjacent candidate partition
+          int best_p2 = -1;
+          int max_nbrs = 0;
+          for (int c = 0; c < num_cands; ++c) {
+            if (cand_c[c] > max_nbrs) {
+              max_nbrs = cand_c[c];
+              best_p2 = cand_p[c];
+            } else if (cand_c[c] == max_nbrs && best_p2 != -1) {
+              if (partition_counts[cand_p[c]] < partition_counts[best_p2]) {
+                best_p2 = cand_p[c];
+              }
+            }
+          }
+
+          if (best_p2 != -1 && max_nbrs >= 2) {
+            // Check imbalance condition: do not increase imbalance
+            int diff_before =
+                std::abs(partition_counts[p1] - partition_counts[best_p2]);
+            int diff_after = std::abs((partition_counts[p1] - 1) -
+                                      (partition_counts[best_p2] + 1));
+            if (diff_after <= diff_before) {
+              partition_map[idx] = best_p2;
+              partition_counts[p1]--;
+              partition_counts[best_p2]++;
+              cleaned_in_pass++;
+              total_cleaned++;
+            }
+          }
+        }
+      }
+    }
+
+    if (cleaned_in_pass == 0) {
+      break;
+    }
+  }
+
+  return total_cleaned;
+}
+
 // --- refinePartitionsIteratively --------------------------------------------
 /**
  * @brief Iteratively refines partition assignments at domain boundaries to
  * balance active sea point counts across partitions.
  * @details Examines boundary sea points between overloaded and underloaded
  * adjacent partitions and reassigns points to improve overall load balance
- * until convergence or max_iterations is reached. Periodic component checks
- * run every 5th iteration to reassign disconnected fragments, ensuring
- * partitions remain contiguous and compact throughout refinement (derived
- * from WW3/WW4 ww4_gspl).
- *
- * Algorithm and Convergence Determination:
- * Target Sea Point Calculation:
- *   Ideal target count per partition is defined as target = total_sea /
- * num_partitions. Overloaded partitions have counts > floor(target).
- *   Underloaded partitions have counts < ceil(target).
- *
- * Boundary Scan and Compactness-Preserving Point Reassignment:
- *   For each sea grid point assigned to an overloaded partition p1, the routine
- *   inspects its 4-connected spatial neighbors (north, south, west, east).
- *   Candidate underloaded neighbor partitions p2 are evaluated, selecting
- *   the partition with the highest neighbor connectivity to maintain compact,
- *   square partition shapes without creating 1-cell protrusions. Partition sea
- *   counts are updated dynamically (count[p1] decreases by 1, count[p2]
- *   increases by 1).
- *
- * Periodic Disconnected Piece Cleanup:
- *   Every 5th iteration, reassignDisconnectedPieces is executed to immediately
- *   reabsorb any small detached fragments into adjacent partitions, preventing
- *   fractal checkerboard garbling during boundary evolution.
- *
- * Convergence Criteria:
- *   An iteration pass consists of a complete sweep across all grid cells (y,
- * x). The routine tracks swaps_made during each pass. Convergence is defined as
- *   a complete pass where swaps_made == 0, meaning no further boundary point
- *   swaps between adjacent overloaded and underloaded partitions are possible.
- *   Iterative processing terminates immediately upon convergence or when
- *   max_iterations is reached.
+ * until convergence or max_iterations is reached. Point exchanges are executed
+ * per row or column of adjacent wet points on the interface (unless adjacent
+ * boundary points are not wet). A row or column exchange is rejected if it
+ * increases the imbalance between the two partitions involved.
+ * Periodic component checks run every 5th iteration to reassign disconnected
+ * fragments, and single protruding points are cleaned up.
  *
  * @param nx Number of longitudinal grid columns.
  * @param ny Number of latitudinal grid rows.
@@ -458,30 +582,44 @@ int refinePartitionsIteratively(
   }
 
   // === Section: Target Load Calculation & Spatial Connectivity Setup ========
-  // Calculate ideal target sea point distribution across all partitions.
-  // Overloaded partitions exceed floor(target); underloaded partitions fall
-  // below ceil(target).
   double target_per_partition = static_cast<double>(total_sea) / num_partitions;
 
-  // Define 4-connected spatial neighbor direction vectors (south, north, west,
-  // east)
   const int dx[] = {0, 0, -1, 1};
   const int dy[] = {-1, 1, 0, 0};
 
+  // Helper lambda to get neighbor partition ID (or 0 if invalid/non-wet)
+  auto getNeighborPartition = [&](int x, int y, int dir) -> int {
+    int nx_nbr = x + dx[dir];
+    int ny_nbr = y + dy[dir];
+    if (ny_nbr < 0 || ny_nbr >= ny) {
+      return 0;
+    }
+    if (is_global) {
+      nx_nbr = (nx_nbr + nx) % nx;
+    } else if (nx_nbr < 0 || nx_nbr >= nx) {
+      return 0;
+    }
+    int nbr_idx = ny_nbr * nx + nx_nbr;
+    if (!isWetPoint(land_sea_map[nbr_idx])) {
+      return 0;
+    }
+    return partition_map[nbr_idx];
+  };
+
   // === Section: Iterative Refinement Loop ===================================
-  // Perform boundary refinement sweeps up to the user-specified iteration
-  // limit.
   int actual_iters = 0;
   for (int iter = 0; iter < max_iterations; ++iter) {
     actual_iters++;
     int swaps_made = 0;
 
-    // Execute full 2D spatial grid sweep across all rows (y) and columns (x)
+    std::vector<bool> processed_in_iter(nx * ny, false);
+
+    // Execute 2D spatial grid sweep across all rows (y) and columns (x)
     for (int y = 0; y < ny; ++y) {
       for (int x = 0; x < nx; ++x) {
         int idx = y * nx + x;
-        if (!isWetPoint(land_sea_map[idx])) {
-          continue; // Skip non-wet points
+        if (processed_in_iter[idx] || !isWetPoint(land_sea_map[idx])) {
+          continue;
         }
 
         int p1 = partition_map[idx];
@@ -490,78 +628,185 @@ int refinePartitionsIteratively(
         }
 
         // --- Overloaded Partition Filter ------------------------------------
-        // Only shift boundary sea points away from partition p1 if p1 holds
-        // strictly more sea points than the floor of the target load.
         if (partition_counts[p1] <=
             static_cast<int>(std::floor(target_per_partition))) {
           continue;
         }
 
-        // --- Spatial 4-Neighbor Boundary Inspection -------------------------
-        // Inspect 4-connected adjacent sea cells (north, south, east, west).
-        // Record unique adjacent partitions and their counts on the stack
-        // to favor compact boundary swaps without heap allocations.
+        // Find candidate underloaded neighbors
         int cand_p[4] = {0, 0, 0, 0};
-        int cand_c[4] = {0, 0, 0, 0};
+        int cand_dir[4] = {-1, -1, -1, -1};
         int num_cands = 0;
 
         for (int k = 0; k < 4; ++k) {
-          int nx_nbr = x + dx[k];
-          int ny_nbr = y + dy[k];
-
-          if (ny_nbr < 0 || ny_nbr >= ny) {
-            continue; // Out of latitudinal grid bounds
-          }
-
-          if (is_global) {
-            nx_nbr = (nx_nbr + nx) % nx;
-          } else if (nx_nbr < 0 || nx_nbr >= nx) {
-            continue; // Out of longitudinal grid bounds
-          }
-
-          int nbr_idx = ny_nbr * nx + nx_nbr;
-          if (!isWetPoint(land_sea_map[nbr_idx])) {
-            continue; // Non-wet neighbor
-          }
-
-          int p2 = partition_map[nbr_idx];
+          int p2 = getNeighborPartition(x, y, k);
           if (p2 >= 1 && p2 <= num_partitions && p2 != p1) {
-            bool found = false;
-            for (int c = 0; c < num_cands; ++c) {
-              if (cand_p[c] == p2) {
-                cand_c[c]++;
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
+            if (partition_counts[p2] <
+                static_cast<int>(std::ceil(target_per_partition))) {
               cand_p[num_cands] = p2;
-              cand_c[num_cands] = 1;
+              cand_dir[num_cands] = k;
               num_cands++;
             }
           }
         }
 
-        // Select underloaded neighbor partition with highest connectivity to
-        // maintain squareness and boundary compactness
-        int best_p2 = -1;
-        int max_nbrs = 0;
-        for (int c = 0; c < num_cands; ++c) {
-          int p2 = cand_p[c];
-          if (partition_counts[p2] <
-              static_cast<int>(std::ceil(target_per_partition))) {
-            if (cand_c[c] > max_nbrs) {
-              max_nbrs = cand_c[c];
-              best_p2 = p2;
+        if (num_cands == 0) {
+          continue;
+        }
+
+        // Prioritize candidate with lowest count
+        int best_p2 = cand_p[0];
+        int best_dir = cand_dir[0];
+        for (int c = 1; c < num_cands; ++c) {
+          if (partition_counts[cand_p[c]] < partition_counts[best_p2]) {
+            best_p2 = cand_p[c];
+            best_dir = cand_dir[c];
+          }
+        }
+
+        // Identify segment of adjacent wet points on interface:
+        // If interface is vertical (neighbor is west k=2 or east k=3), the
+        // interface runs vertically along a column of adjacent points sharing
+        // that interface. If interface is horizontal (neighbor is south k=0 or
+        // north k=1), the interface runs horizontally along a row of adjacent
+        // points.
+        std::vector<int> segment_indices;
+
+        if (best_dir == 0 || best_dir == 1) {
+          // Horizontal interface: inspect adjacent wet points along row y
+          // Check if adjacent boundary points along row are wet
+          bool left_wet = (x > 0) && isWetPoint(land_sea_map[y * nx + (x - 1)]);
+          bool right_wet =
+              (x < nx - 1) && isWetPoint(land_sea_map[y * nx + (x + 1)]);
+
+          if (!left_wet && !right_wet) {
+            // Adjacent points along the boundary row are not wet; treat as
+            // individual point
+            segment_indices.push_back(idx);
+          } else {
+            // Collect contiguous segment of adjacent wet points in this row
+            // belonging to p1 that border best_p2 in direction best_dir
+            int x_start = x;
+            while (x_start > 0) {
+              int test_idx = y * nx + (x_start - 1);
+              if (!isWetPoint(land_sea_map[test_idx])) {
+                break;
+              }
+              if (partition_map[test_idx] != p1) {
+                break;
+              }
+              if (getNeighborPartition(x_start - 1, y, best_dir) != best_p2) {
+                break;
+              }
+              x_start--;
+            }
+
+            int x_end = x;
+            while (x_end < nx - 1) {
+              int test_idx = y * nx + (x_end + 1);
+              if (!isWetPoint(land_sea_map[test_idx])) {
+                break;
+              }
+              if (partition_map[test_idx] != p1) {
+                break;
+              }
+              if (getNeighborPartition(x_end + 1, y, best_dir) != best_p2) {
+                break;
+              }
+              x_end++;
+            }
+
+            for (int col = x_start; col <= x_end; ++col) {
+              segment_indices.push_back(y * nx + col);
+            }
+          }
+        } else {
+          // Vertical interface: inspect adjacent wet points along column x
+          bool down_wet = (y > 0) && isWetPoint(land_sea_map[(y - 1) * nx + x]);
+          bool up_wet =
+              (y < ny - 1) && isWetPoint(land_sea_map[(y + 1) * nx + x]);
+
+          if (!down_wet && !up_wet) {
+            // Adjacent points along column are not wet; treat as individual
+            // point
+            segment_indices.push_back(idx);
+          } else {
+            // Collect contiguous segment along column x
+            int y_start = y;
+            while (y_start > 0) {
+              int test_idx = (y_start - 1) * nx + x;
+              if (!isWetPoint(land_sea_map[test_idx])) {
+                break;
+              }
+              if (partition_map[test_idx] != p1) {
+                break;
+              }
+              if (getNeighborPartition(x, y_start - 1, best_dir) != best_p2) {
+                break;
+              }
+              y_start--;
+            }
+
+            int y_end = y;
+            while (y_end < ny - 1) {
+              int test_idx = (y_end + 1) * nx + x;
+              if (!isWetPoint(land_sea_map[test_idx])) {
+                break;
+              }
+              if (partition_map[test_idx] != p1) {
+                break;
+              }
+              if (getNeighborPartition(x, y_end + 1, best_dir) != best_p2) {
+                break;
+              }
+              y_end++;
+            }
+
+            for (int r = y_start; r <= y_end; ++r) {
+              segment_indices.push_back(r * nx + x);
             }
           }
         }
 
-        if (best_p2 != -1) {
-          partition_map[idx] = best_p2;
-          partition_counts[p1]--;
-          partition_counts[best_p2]++;
-          swaps_made++;
+        int S = static_cast<int>(segment_indices.size());
+        if (S == 0) {
+          continue;
+        }
+
+        // Mark points as processed for this iteration pass
+        for (int pt : segment_indices) {
+          processed_in_iter[pt] = true;
+        }
+
+        // Imbalance condition: Do not exchange if this increases the imbalance
+        // between the number of points in the two partitions involved.
+        int diff_before =
+            std::abs(partition_counts[p1] - partition_counts[best_p2]);
+        int diff_after = std::abs((partition_counts[p1] - S) -
+                                  (partition_counts[best_p2] + S));
+
+        if (diff_after <= diff_before) {
+          for (int pt : segment_indices) {
+            partition_map[pt] = best_p2;
+          }
+          partition_counts[p1] -= S;
+          partition_counts[best_p2] += S;
+          swaps_made += S;
+        }
+      }
+    }
+
+    // Clean single protruding points after exchange
+    int cleaned = cleanSingleProtrudingPoints(
+        nx, ny, land_sea_map, num_partitions, partition_map, is_global);
+    if (cleaned > 0) {
+      swaps_made += cleaned;
+      // Resynchronize partition counts
+      std::fill(partition_counts.begin(), partition_counts.end(), 0);
+      for (size_t i = 0; i < partition_map.size(); ++i) {
+        int pid = partition_map[i];
+        if (isWetPoint(land_sea_map[i]) && pid >= 1 && pid <= num_partitions) {
+          partition_counts[pid]++;
         }
       }
     }
@@ -576,7 +821,6 @@ int refinePartitionsIteratively(
       int reassigned = reassignDisconnectedPieces(
           nx, ny, land_sea_map, num_partitions, partition_map, is_global);
       if (reassigned > 0) {
-        // Resynchronize partition counts following reassignment
         std::fill(partition_counts.begin(), partition_counts.end(), 0);
         for (size_t i = 0; i < partition_map.size(); ++i) {
           int pid = partition_map[i];
@@ -592,9 +836,6 @@ int refinePartitionsIteratively(
     }
 
     // === Section: Iteration Convergence Determination =======================
-    // Convergence condition: if a complete sweep across the grid results in
-    // zero boundary sea point swaps (swaps_made == 0), the boundary assignments
-    // have stabilized and optimal load balance across partitions has converged.
     if (swaps_made == 0) {
       break;
     }
@@ -615,32 +856,12 @@ int refinePartitionsIteratively(
  * isolated partition into two sub-partitions using the released partition
  * number.
  *
- * Algorithm and Bisection Protocol:
- * Isolated Overloaded Partition Detection:
- *   Partition sea point counts are evaluated against the target ceiling
- *   target_ceil = ceil(total_sea / num_partitions). An isolated partition p has
- *   no 4-connected sea neighbors belonging to other partitions. If p has
- *   count[p] > target_ceil, it cannot be reduced via boundary refinement and
- *   is selected for bisection.
- *
- * Candidate Merge Pair Selection:
- *   Searches for adjacent neighboring partition pairs (q1, q2) that share a
- *   4-connected sea boundary. Candidate pairs are checked to verify that
- *   merging q1 and q2 will not result in a new isolated partition (i.e. the
- *   merged partition shares a boundary with at least one external neighbor
- *   partition other than q1, q2, and isolated_p). Among valid pairs, the pair
- *   minimizing count[q1] + count[q2] is selected.
- *
- * Partition Merger and Bisection Split:
- *   Partition q2 is merged into q1, releasing partition ID q2. The bounding
- *   box of isolated partition p is computed, and p's sea cells are bisected
- *   along its major axis into two sub-partitions using IDs p and q2.
- *
  * @param nx Number of longitudinal grid columns.
  * @param ny Number of latitudinal grid rows.
  * @param land_sea_map 2D land-sea mask span.
  * @param num_partitions Total number of partitions.
  * @param[in,out] partition_map Partition IDs vector to update in place.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
  * @return True if an isolated partition was split; false otherwise.
  */
 bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
@@ -673,7 +894,6 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
   int target_ceil = static_cast<int>(std::ceil(target_per_partition));
 
   // === Section: Spatial Neighborhood Mapping ================================
-  // Build neighborhood map recording adjacent partition IDs for each partition
   std::vector<std::set<int>> partition_neighbors(num_partitions + 1);
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
@@ -739,9 +959,6 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
         continue;
       }
 
-      // Ensure merging q1 and q2 does not create a new isolated partition.
-      // The merged partition must share a boundary with at least one external
-      // neighbor partition other than q1, q2, and isolated_p.
       auto is_external_nbr = [q1, q2, isolated_p](int nbr) {
         return nbr != q1 && nbr != q2 && nbr != isolated_p;
       };
@@ -917,6 +1134,13 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
       record_map();
     }
 
+    // Clean protruding points on final partition map
+    int cleaned = cleanSingleProtrudingPoints(
+        nx, ny, land_sea_map, num_partitions, partition_map, is_global);
+    if (cleaned > 0) {
+      record_map();
+    }
+
     for (int split_pass = 0; split_pass < num_partitions; ++split_pass) {
       bool split_done = splitIsolatedPartitions(
           nx, ny, land_sea_map, num_partitions, partition_map, is_global);
@@ -932,6 +1156,11 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
       int reassigned_after_split = reassignDisconnectedPieces(
           nx, ny, land_sea_map, num_partitions, partition_map, is_global);
       if (reassigned_after_split > 0) {
+        record_map();
+      }
+      int cleaned_after_split = cleanSingleProtrudingPoints(
+          nx, ny, land_sea_map, num_partitions, partition_map, is_global);
+      if (cleaned_after_split > 0) {
         record_map();
       }
     }
