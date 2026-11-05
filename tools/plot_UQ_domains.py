@@ -50,7 +50,6 @@ import sys
 from pathlib import Path
 
 try:
-    import matplotlib.patches as mpatches
     import matplotlib.pyplot as plt
     import netCDF4 as nc
     import numpy as np
@@ -342,58 +341,8 @@ def setup_plot_axes(
     ax.set_ylabel("Y (Grid rows)")
     ax.set_title(title, fontsize=11, fontweight="bold")
 
-    # Legend elements:
-    # Feature markers conforming to gridgen development branch
-    legend_patches = [
-        mpatches.Patch(
-            facecolor="#006400", edgecolor="black", linewidth=0.5, label="Land"
-        )
-    ]
-    if has_boundary:
-        legend_patches.append(
-            mpatches.Patch(
-                facecolor="#ff00ff",
-                edgecolor="black",
-                linewidth=0.5,
-                label="Boundary",
-            )
-        )
-    if has_excluded:
-        legend_patches.append(
-            mpatches.Patch(
-                facecolor="#d0d0d0",
-                edgecolor="black",
-                linewidth=0.5,
-                label="Excluded",
-            )
-        )
-
-    # Partition color swatches
-    num_p_colors = max(color_map.values()) + 1 if color_map else 1
-    for c in range(num_p_colors):
-        p_list = [p for p, col in color_map.items() if col == c]
-        if len(p_list) <= 6:
-            lbl = f"Part: {', '.join(map(str, sorted(p_list)))}"
-        else:
-            lbl = f"Part ({len(p_list)} domains)"
-        color_val = DISTINCT_PARTITION_PALETTE[c % len(DISTINCT_PARTITION_PALETTE)]
-        legend_patches.append(
-            mpatches.Patch(
-                facecolor=color_val,
-                edgecolor="black",
-                linewidth=0.5,
-                label=lbl,
-            )
-        )
-
-    ax.legend(
-        handles=legend_patches,
-        loc="upper left",
-        bbox_to_anchor=(1.02, 1.0),
-        borderaxespad=0.0,
-        fontsize=9,
-        frameon=True,
-    )
+    # Omit legend on the right side of the plot per user instructions
+    _ = (color_map, has_boundary, has_excluded)
 
 
 def sample_indices(total_maps: int, step: int) -> list[int]:
@@ -472,16 +421,6 @@ def create_animation(
     """
     Generate an animated GIF across sampled map iterations.
     """
-    try:
-        import imageio.v3 as iio
-    except ImportError:
-        try:
-            import imageio as iio
-        except ImportError:
-            raise ImportError(
-                "imageio library is required for animated GIF generation."
-            )
-
     import io
 
     from PIL import Image
@@ -490,13 +429,13 @@ def create_animation(
     num_p_colors = max(color_map.values()) + 1 if color_map else 1
     cmap, norm = get_feature_colormap(num_p_colors)
 
-    frames = []
+    pil_frames: list[Image.Image] = []
     for idx in indices:
         disp, has_boundary, has_excluded = build_display_array(
             maps[idx], color_map, grid_mask
         )
 
-        fig, ax = plt.subplots(figsize=(9, 6))
+        fig, ax = plt.subplots(figsize=(9, 6), facecolor="white")
         title = (
             f"{title_prefix} [Step {idx + 1}/{total_maps}]\n"
             f"Partitions: {num_partitions} (Colors used: {num_p_colors})"
@@ -516,20 +455,30 @@ def create_animation(
         plt.tight_layout()
 
         buf = io.BytesIO()
-        plt.savefig(buf, format="png", dpi=120, bbox_inches="tight")
+        plt.savefig(
+            buf,
+            format="png",
+            dpi=120,
+            facecolor="white",
+            edgecolor="none",
+        )
         plt.close(fig)
         buf.seek(0)
-        frames.append(np.array(Image.open(buf)))
+        frame_img = Image.open(buf).convert("RGB")
+        pil_frames.append(frame_img)
 
     duration_ms = int(1000.0 / max(1, fps))
-    iio.imwrite(
+    # Save animated GIF using PIL with disposal=2 (restore to background) to prevent black background / ghosting
+    pil_frames[0].save(
         str(output_path),
-        frames,
+        save_all=True,
+        append_images=pil_frames[1:],
         duration=duration_ms,
         loop=0,
+        disposal=2,
     )
     print(
-        f"Saved animation ({len(frames)} frames from {total_maps} total maps) to: {output_path}"
+        f"Saved animation ({len(pil_frames)} frames from {total_maps} total maps) to: {output_path}"
     )
 
 

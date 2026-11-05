@@ -20,7 +20,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-05
  */
 
 #include "ww4_core/solver_UQ/UQ_domains.h"
@@ -37,6 +37,15 @@ namespace UQ_utils {
 
 namespace {
 
+// --- isWetPoint -------------------------------------------------------------
+/**
+ * @brief Checks if a grid cell is an active wet point.
+ * @details Excluded points (value 3) and land points (<= 0) are excluded.
+ * @param val Status mask value at grid cell.
+ * @return True if cell is an active wet sea point (1 or 2); false otherwise.
+ */
+inline bool isWetPoint(int val) noexcept { return (val > 0 && val != 3); }
+
 // --- countSeaPointsInRect ---------------------------------------------------
 /**
  * @brief Counts active sea points in a rectangular bounding box.
@@ -46,14 +55,14 @@ namespace {
  * @param y_max Maximum latitude index (0-based).
  * @param nx Number of longitudinal grid columns.
  * @param land_sea_map 2D land-sea mask span.
- * @return Count of sea points (where land_sea_map > 0).
+ * @return Count of sea points (where cell is wet and not excluded).
  */
 int countSeaPointsInRect(int x_min, int x_max, int y_min, int y_max, int nx,
                          std::span<const int> land_sea_map) {
   int count = 0;
   for (int y = y_min; y <= y_max; ++y) {
     for (int x = x_min; x <= x_max; ++x) {
-      if (land_sea_map[y * nx + x] > 0) {
+      if (isWetPoint(land_sea_map[y * nx + x])) {
         count++;
       }
     }
@@ -88,7 +97,7 @@ void recursiveBisectDomain(int x_min, int x_max, int y_min, int y_max, int nx,
     for (int y = y_min; y <= y_max; ++y) {
       for (int x = x_min; x <= x_max; ++x) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] > 0) {
+        if (isWetPoint(land_sea_map[idx])) {
           partition_map[idx] = partition_start_id;
         }
       }
@@ -150,7 +159,7 @@ void recursiveBisectDomain(int x_min, int x_max, int y_min, int y_max, int nx,
     for (int y = y_min; y <= y_max; ++y) {
       for (int x = x_min; x <= x_max; ++x) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] > 0) {
+        if (isWetPoint(land_sea_map[idx])) {
           partition_map[idx] = partition_start_id;
         }
       }
@@ -211,7 +220,7 @@ int refinePartitionsIteratively(
   int total_sea = 0;
   for (size_t i = 0; i < partition_map.size(); ++i) {
     int pid = partition_map[i];
-    if (land_sea_map[i] > 0 && pid >= 1 && pid <= num_partitions) {
+    if (isWetPoint(land_sea_map[i]) && pid >= 1 && pid <= num_partitions) {
       partition_counts[pid]++;
       total_sea++;
     }
@@ -245,8 +254,8 @@ int refinePartitionsIteratively(
     for (int y = 0; y < ny; ++y) {
       for (int x = 0; x < nx; ++x) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] <= 0) {
-          continue; // Skip land points
+        if (!isWetPoint(land_sea_map[idx])) {
+          continue; // Skip non-wet points
         }
 
         int p1 = partition_map[idx];
@@ -279,8 +288,8 @@ int refinePartitionsIteratively(
           }
 
           int nbr_idx = ny_nbr * nx + nx_nbr;
-          if (land_sea_map[nbr_idx] <= 0) {
-            continue; // Land point neighbor
+          if (!isWetPoint(land_sea_map[nbr_idx])) {
+            continue; // Non-wet neighbor
           }
 
           int p2 = partition_map[nbr_idx];
@@ -388,7 +397,7 @@ int reassignDisconnectedPieces(int nx, int ny,
     std::vector<int> partition_counts(num_partitions + 1, 0);
     for (size_t i = 0; i < partition_map.size(); ++i) {
       int p = partition_map[i];
-      if (land_sea_map[i] > 0 && p >= 1 && p <= num_partitions) {
+      if (isWetPoint(land_sea_map[i]) && p >= 1 && p <= num_partitions) {
         partition_counts[p]++;
       }
     }
@@ -406,7 +415,7 @@ int reassignDisconnectedPieces(int nx, int ny,
       for (int y = 0; y < ny; ++y) {
         for (int x = 0; x < nx; ++x) {
           int idx = y * nx + x;
-          if (land_sea_map[idx] <= 0 || partition_map[idx] != p ||
+          if (!isWetPoint(land_sea_map[idx]) || partition_map[idx] != p ||
               visited[idx]) {
             continue;
           }
@@ -435,8 +444,8 @@ int reassignDisconnectedPieces(int nx, int ny,
                 continue;
               }
               int nbr_idx = nbr_y * nx + nbr_x;
-              if (land_sea_map[nbr_idx] > 0 && partition_map[nbr_idx] == p &&
-                  !visited[nbr_idx]) {
+              if (isWetPoint(land_sea_map[nbr_idx]) &&
+                  partition_map[nbr_idx] == p && !visited[nbr_idx]) {
                 visited[nbr_idx] = true;
                 queue.push_back(nbr_idx);
               }
@@ -488,7 +497,7 @@ int reassignDisconnectedPieces(int nx, int ny,
               continue;
             }
             int nbr_idx = nbr_y * nx + nbr_x;
-            if (land_sea_map[nbr_idx] > 0) {
+            if (isWetPoint(land_sea_map[nbr_idx])) {
               int nbr_p = partition_map[nbr_idx];
               if (nbr_p >= 1 && nbr_p <= num_partitions && nbr_p != p) {
                 neighbor_partitions.insert(nbr_p);
@@ -590,7 +599,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
   int total_sea = 0;
   for (size_t i = 0; i < partition_map.size(); ++i) {
     int p = partition_map[i];
-    if (land_sea_map[i] > 0 && p >= 1 && p <= num_partitions) {
+    if (isWetPoint(land_sea_map[i]) && p >= 1 && p <= num_partitions) {
       partition_counts[p]++;
       total_sea++;
     }
@@ -609,7 +618,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
       int idx = y * nx + x;
-      if (land_sea_map[idx] <= 0) {
+      if (!isWetPoint(land_sea_map[idx])) {
         continue;
       }
       int p1 = partition_map[idx];
@@ -629,7 +638,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
           continue;
         }
         int nbr_idx = nbr_y * nx + nbr_x;
-        if (land_sea_map[nbr_idx] > 0) {
+        if (isWetPoint(land_sea_map[nbr_idx])) {
           int p2 = partition_map[nbr_idx];
           if (p2 >= 1 && p2 <= num_partitions && p2 != p1) {
             partition_neighbors[p1].insert(p2);
@@ -705,7 +714,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
   int q_released = best_q2;
 
   for (size_t i = 0; i < partition_map.size(); ++i) {
-    if (land_sea_map[i] > 0 && partition_map[i] == q_released) {
+    if (isWetPoint(land_sea_map[i]) && partition_map[i] == q_released) {
       partition_map[i] = q_keep;
     }
   }
@@ -718,7 +727,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
       int idx = y * nx + x;
-      if (land_sea_map[idx] > 0 && partition_map[idx] == isolated_p) {
+      if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == isolated_p) {
         x_min = std::min(x_min, x);
         x_max = std::max(x_max, x);
         y_min = std::min(y_min, y);
@@ -741,7 +750,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
       int sea_in_col = 0;
       for (int y = y_min; y <= y_max; ++y) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] > 0 && partition_map[idx] == isolated_p) {
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == isolated_p) {
           sea_in_col++;
         }
       }
@@ -756,7 +765,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
     for (int y = y_min; y <= y_max; ++y) {
       for (int x = best_x + 1; x <= x_max; ++x) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] > 0 && partition_map[idx] == isolated_p) {
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == isolated_p) {
           partition_map[idx] = q_released;
         }
       }
@@ -770,7 +779,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
       int sea_in_row = 0;
       for (int x = x_min; x <= x_max; ++x) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] > 0 && partition_map[idx] == isolated_p) {
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == isolated_p) {
           sea_in_row++;
         }
       }
@@ -785,7 +794,7 @@ bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
     for (int y = best_y + 1; y <= y_max; ++y) {
       for (int x = x_min; x <= x_max; ++x) {
         int idx = y * nx + x;
-        if (land_sea_map[idx] > 0 && partition_map[idx] == isolated_p) {
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == isolated_p) {
           partition_map[idx] = q_released;
         }
       }
