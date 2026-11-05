@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-05
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -197,10 +197,34 @@ void solver_UQ_init(std::ostream &os) {
   ww4::io::PartitionMapData partData;
   int partStatus = ww4::io::readUQpartitionMapNetCDF(partFilePath, partData);
 
-  // Check if partition count matches the user request
-  if (partStatus == 0 &&
-      partData.num_partitions != getRunConfig().numRanksCompute) {
-    partStatus = 4;
+  // Validate that partition file metadata and dimensions match grid file
+  if (partStatus == 0) {
+    const std::size_t exp_faces =
+        (ugrid.n_faces > 0) ? ugrid.n_faces : (ugrid.nx * ugrid.ny);
+    const std::size_t exp_nodes =
+        (ugrid.n_nodes > 0) ? ugrid.n_nodes : (ugrid.nx + 1) * (ugrid.ny + 1);
+    const std::size_t exp_max_nodes =
+        (ugrid.max_face_nodes > 0) ? ugrid.max_face_nodes : 4;
+
+    const bool dimsMatch =
+        (partData.nx == ugrid.nx && partData.ny == ugrid.ny &&
+         partData.n_faces == exp_faces && partData.n_nodes == exp_nodes &&
+         partData.max_face_nodes == exp_max_nodes);
+
+    const bool metaMatch =
+        (partData.title == ugrid.title && partData.source == ugrid.source &&
+         partData.grid_type == ugrid.grid_type &&
+         partData.coord_type == ugrid.coord_type &&
+         partData.global_closure == ugrid.global_closure &&
+         partData.bathy_source == ugrid.bathy_source &&
+         partData.bound_source == ugrid.bound_source &&
+         partData.conventions == ugrid.conventions);
+
+    if (!dimsMatch || !metaMatch) {
+      partStatus = 5;
+    } else if (partData.num_partitions != getRunConfig().numRanksCompute) {
+      partStatus = 4;
+    }
   }
 
   std::vector<int> partitionMap;
@@ -215,6 +239,8 @@ void solver_UQ_init(std::ostream &os) {
       errMsg = "Failed reading metadata dimensions from file";
     } else if (partStatus == 3) {
       errMsg = "Failed reading partition map dataset arrays from file";
+    } else if (partStatus == 5) {
+      errMsg = "Metadata in partition file does not match grid file";
     } else {
       errMsg = "Number of partitions in file does not match user request";
     }

@@ -549,10 +549,6 @@ def main():
     # Always produce output in the current working directory where the tool is executed
     output_path = Path.cwd() / output_filename
 
-    # Build adjacency graph and minimal graph coloring across all partitions
-    adj = build_partition_adjacency_graph(maps)
-    color_map = compute_minimal_partition_coloring(adj)
-
     # Animate if requested or if output format is gif
     is_gif = out_ext == "gif"
     if args.animate or is_gif:
@@ -564,6 +560,10 @@ def main():
             output_path = Path.cwd() / f"{base_name}.gif"
 
         indices = sample_indices(total_maps, args.step)
+        # Build adjacency graph and minimal graph coloring across sampled animation frames
+        adj = build_partition_adjacency_graph(maps[indices])
+        color_map = compute_minimal_partition_coloring(adj)
+
         create_animation(
             maps,
             indices,
@@ -577,6 +577,10 @@ def main():
     else:
         # Plot the entire map array for the final map iteration
         last_idx = total_maps - 1
+        # Build adjacency graph and minimal coloring strictly for the final map being displayed
+        adj = build_partition_adjacency_graph(maps[last_idx : last_idx + 1])
+        color_map = compute_minimal_partition_coloring(adj)
+
         plot_single_map(
             maps[last_idx],
             last_idx,
