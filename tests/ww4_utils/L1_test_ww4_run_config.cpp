@@ -79,6 +79,36 @@ TEST(RunConfigTest, NonDefaultConfig) {
   std::remove(filename.c_str());
 }
 
+// --- MaxIterationsParsingTest -----------------------------------------------
+TEST(RunConfigTest, MaxIterationsParsing) {
+  const std::string filename = "test_max_iterations.yaml";
+  std::ofstream file(filename);
+  file << "grid:\n";
+  file << "  grid_file: test_grid.nc\n";
+  file << "  max_iterations: 42\n";
+  file << "general:\n";
+  file << "  time_step: 3600.0\n";
+  file << "physics:\n";
+  file << "  solver: UQ\n";
+  file << "  linear_input: LN1\n";
+  file << "  input_dissipation: ST4\n";
+  file << "  nonlinear_interactions: NL1\n";
+  file << "  bottom_friction: BT1\n";
+  file << "forcing:\n";
+  file << "  water_levels: none\n";
+  file << "  currents: none\n";
+  file << "  winds: none\n";
+  file << "  ice_concentrations: none\n";
+  file << "  bottom_depth: from_grid\n";
+  file.close();
+
+  const auto config = loadRunConfig(filename, std::cerr);
+  ASSERT_TRUE(config.has_value());
+  EXPECT_EQ(config->maxIterations, 42);
+
+  std::remove(filename.c_str());
+}
+
 TEST(RunConfigTest, PrintGridMetaParsing) {
   // Case 1: Default to false when omitted
   {

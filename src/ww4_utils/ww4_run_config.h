@@ -261,6 +261,9 @@ struct HomogeneousDataPoint {
  * @brief Optional printing of grid file metadata flag.
  * @var RunConfig::intermediateMaps
  * @brief Option to save each consecutive map during partitioning to file flag.
+ * @var RunConfig::maxIterations
+ * @brief Maximum number of boundary refinement iterations during domain
+ * decomposition.
  * @var RunConfig::sourceTerms
  * @brief Source terms flag.
  * @var RunConfig::solver
@@ -323,6 +326,7 @@ struct RunConfig {
   std::string gridFile;
   bool printGridMeta = false;
   bool intermediateMaps = false;
+  int maxIterations = 100;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;

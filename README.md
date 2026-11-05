@@ -136,15 +136,15 @@ WAVEWATCH IV provides developer microtools in the `tools/` directory (such as `p
 - `numpy` (array data structures and numerical operations)
 - `netCDF4` (NetCDF grid and partition dataset reader)
 - `matplotlib` (graphical plotting and colormapping)
-- `pillow` (image processing and animated GIF generation)
+- `pillow` / `imageio` (image processing and animated GIF generation)
 
 They can generally be installed in your environment using standard `pip`:
 ```bash
-pip install numpy netCDF4 matplotlib pillow
+pip install numpy netCDF4 matplotlib pillow imageio
 ```
 Or within an active conda environment:
 ```bash
-conda install numpy netcdf4 matplotlib pillow
+conda install numpy netcdf4 matplotlib pillow imageio
 ```
 On High-Performance Computing (HPC) systems, these libraries are typically available by loading python modules (e.g., `module load python/3.12` or similar HPC module environments).
 
