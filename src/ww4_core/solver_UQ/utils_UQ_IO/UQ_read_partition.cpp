@@ -17,7 +17,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-11-03
-// @date Last update : 2026-11-03
+// @date Last update : 2026-11-05
 
 #include "UQ_read_partition.h"
 
@@ -152,6 +152,17 @@ int readUQpartitionMapNetCDF(const std::filesystem::path &filepath,
   if (!read_dim_len("ny", part_data.ny) || !read_dim_len("nx", part_data.nx)) {
     part_data.clear();
     return 2;
+  }
+
+  // Read mesh face/node dimensions if available (or calculate defaults)
+  if (!read_dim_len("nMesh2_face", part_data.n_faces)) {
+    part_data.n_faces = part_data.ny * part_data.nx;
+  }
+  if (!read_dim_len("nMesh2_node", part_data.n_nodes)) {
+    part_data.n_nodes = (part_data.nx + 1) * (part_data.ny + 1);
+  }
+  if (!read_dim_len("nMaxMesh2_face_nodes", part_data.max_face_nodes)) {
+    part_data.max_face_nodes = 4;
   }
 
   // Look for n_partition_maps dimension (defaulting to 1 if missing but 2D)

@@ -35,8 +35,10 @@ NWS often uses Generative AI (GenAI) for code development and refactoring. Whene
 @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 @author Contributors: Jules (Agentic AI)
 @date Initial, 2026-11-04
-@date Last update : 2026-11-04
+@date Last update : 2026-11-05
 """
+
+from __future__ import annotations
 
 import argparse
 import sys
@@ -245,10 +247,17 @@ def main():
         description="Plot WAVEWATCH IV UQ grid partition maps from NetCDF file."
     )
     parser.add_argument(
+        "input_pos",
+        nargs="?",
+        default=None,
+        metavar="partition_file",
+        help="Path to the NetCDF partition file (positional).",
+    )
+    parser.add_argument(
         "--input",
         "-i",
         type=str,
-        required=True,
+        default=None,
         help="Path to the NetCDF partition file.",
     )
     parser.add_argument(
@@ -277,7 +286,12 @@ def main():
     )
 
     args = parser.parse_args()
-    input_path = Path(args.input)
+    raw_input = args.input or args.input_pos
+    if not raw_input:
+        parser.error(
+            "A partition file path must be provided as a positional argument or via --input/-i."
+        )
+    input_path = Path(raw_input)
 
     try:
         maps, num_partitions, grid_title = read_partition_file(input_path)

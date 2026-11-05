@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-11-03
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-05
  */
 
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.h"
@@ -50,6 +50,11 @@ TEST(UQWritePartitionTest, OneShotWrite) {
   PartitionMapData read_data;
   status = readUQpartitionMapNetCDF(filename, read_data);
   ASSERT_EQ(status, 0);
+  EXPECT_EQ(read_data.nx, 3u);
+  EXPECT_EQ(read_data.ny, 2u);
+  EXPECT_EQ(read_data.n_faces, 6u);
+  EXPECT_EQ(read_data.n_nodes, 12u);
+  EXPECT_EQ(read_data.max_face_nodes, 4u);
   EXPECT_EQ(read_data.partition_map, partition_map);
 
   std::remove(filename.c_str());

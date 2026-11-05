@@ -17,7 +17,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-11-03
-// @date Last update : 2026-11-03
+// @date Last update : 2026-11-05
 
 #include "UQ_write_partition.h"
 
@@ -62,15 +62,33 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
     return 1;
   }
 
-  // Define dimensions: unlimited maps dimension, plus ny and nx
+  // Determine face and node dimensions
+  const std::size_t num_2d = grid.nx * grid.ny;
+  const std::size_t n_faces = (grid.n_faces > 0) ? grid.n_faces : num_2d;
+  const std::size_t n_nodes =
+      (grid.n_nodes > 0) ? grid.n_nodes : (grid.nx + 1) * (grid.ny + 1);
+  const std::size_t max_face_nodes =
+      (grid.max_face_nodes > 0) ? grid.max_face_nodes : 4;
+
+  // Define dimensions: unlimited maps dimension, plus ny, nx, and UGRID mesh
+  // dimensions
   int dim_maps = -1;
   int dim_ny = -1;
   int dim_nx = -1;
+  int dim_faces = -1;
+  int dim_nodes = -1;
+  int dim_max_nodes = -1;
 
   if (!check_nc_part_err(
           nc_def_dim(raw_ncid, "n_partition_maps", NC_UNLIMITED, &dim_maps)) ||
       !check_nc_part_err(nc_def_dim(raw_ncid, "ny", grid.ny, &dim_ny)) ||
-      !check_nc_part_err(nc_def_dim(raw_ncid, "nx", grid.nx, &dim_nx))) {
+      !check_nc_part_err(nc_def_dim(raw_ncid, "nx", grid.nx, &dim_nx)) ||
+      !check_nc_part_err(
+          nc_def_dim(raw_ncid, "nMesh2_face", n_faces, &dim_faces)) ||
+      !check_nc_part_err(
+          nc_def_dim(raw_ncid, "nMesh2_node", n_nodes, &dim_nodes)) ||
+      !check_nc_part_err(nc_def_dim(raw_ncid, "nMaxMesh2_face_nodes",
+                                    max_face_nodes, &dim_max_nodes))) {
     nc_close(raw_ncid);
     return 2;
   }

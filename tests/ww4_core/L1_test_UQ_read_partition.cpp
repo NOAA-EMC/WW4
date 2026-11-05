@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-11-03
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-05
  */
 
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.h"
@@ -106,6 +106,9 @@ TEST(UQReadPartitionTest, ReadsLastMapAndMetadata) {
   EXPECT_EQ(read_data.num_partitions, 3);
   EXPECT_EQ(read_data.nx, 4u);
   EXPECT_EQ(read_data.ny, 2u);
+  EXPECT_EQ(read_data.n_faces, 8u);
+  EXPECT_EQ(read_data.n_nodes, 15u);
+  EXPECT_EQ(read_data.max_face_nodes, 4u);
   EXPECT_EQ(read_data.title, grid.title);
   EXPECT_EQ(read_data.source, grid.source);
   EXPECT_EQ(read_data.grid_type, grid.grid_type);
@@ -120,6 +123,9 @@ TEST(UQReadPartitionTest, ReadsLastMapAndMetadata) {
   // Test clear
   read_data.clear();
   EXPECT_EQ(read_data.num_maps, 0u);
+  EXPECT_EQ(read_data.n_faces, 0u);
+  EXPECT_EQ(read_data.n_nodes, 0u);
+  EXPECT_EQ(read_data.max_face_nodes, 0u);
   EXPECT_TRUE(read_data.partition_map.empty());
 
   std::remove(filename.c_str());

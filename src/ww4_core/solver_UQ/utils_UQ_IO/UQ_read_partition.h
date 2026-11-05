@@ -19,7 +19,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-11-03
-// @date Last update : 2026-11-03
+// @date Last update : 2026-11-05
 
 #ifndef WW4_UQ_READ_PARTITION_H
 #define WW4_UQ_READ_PARTITION_H
@@ -41,6 +41,12 @@ struct PartitionMapData {
   std::size_t ny{0};
   /// Grid x-dimension (number of columns)
   std::size_t nx{0};
+  /// Number of mesh face cells
+  std::size_t n_faces{0};
+  /// Number of mesh nodes
+  std::size_t n_nodes{0};
+  /// Maximum number of nodes per face cell
+  std::size_t max_face_nodes{0};
   /// Number of partition maps present in the file
   std::size_t num_maps{0};
   /// Number of partitions created
@@ -75,6 +81,9 @@ struct PartitionMapData {
   void clear() noexcept {
     ny = 0;
     nx = 0;
+    n_faces = 0;
+    n_nodes = 0;
+    max_face_nodes = 0;
     num_maps = 0;
     num_partitions = 0;
     title.clear();

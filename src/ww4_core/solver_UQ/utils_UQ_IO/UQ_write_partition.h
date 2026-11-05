@@ -18,7 +18,7 @@
 // @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 // @author Contributors : Jules (Agentic AI)
 // @date Initial : 2026-11-03
-// @date Last update : 2026-11-03
+// @date Last update : 2026-11-05
 
 #ifndef WW4_UQ_WRITE_PARTITION_H
 #define WW4_UQ_WRITE_PARTITION_H
