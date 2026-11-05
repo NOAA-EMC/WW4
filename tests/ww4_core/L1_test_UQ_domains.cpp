@@ -17,7 +17,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-05
  */
 
 // Routine coverage references for anonymous namespace helper functions:
@@ -343,6 +343,39 @@ TEST(UQDomainsTest, PreventCreationOfNewIsolatedPartitionOnMerge) {
     } else {
       EXPECT_EQ(partition_map[i], 0);
     }
+  }
+}
+
+TEST(UQDomainsTest, PeriodicDisconnectedCleanupPreservesContiguity) {
+  // Test that running refinement with intermediate map recording preserves
+  // contiguity and does not fragment into multiple disconnected components
+  int nx = 20;
+  int ny = 20;
+  std::vector<int> land_sea_map(nx * ny, 1);
+  int num_partitions = 6;
+  int actual_iterations = 0;
+  std::vector<std::vector<int>> recorded_maps;
+
+  auto recorder = [&](std::span<const int> m) {
+    recorded_maps.emplace_back(m.begin(), m.end());
+  };
+
+  std::vector<int> final_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, 50,
+                          &actual_iterations, false, recorder);
+
+  ASSERT_FALSE(recorded_maps.empty());
+  ASSERT_EQ(final_map.size(), static_cast<size_t>(nx * ny));
+
+  // Verify all partitions in final map are non-empty
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (int p : final_map) {
+    ASSERT_GE(p, 1);
+    ASSERT_LE(p, num_partitions);
+    counts[p]++;
+  }
+  for (int p = 1; p <= num_partitions; ++p) {
+    EXPECT_GT(counts[p], 0);
   }
 }
 

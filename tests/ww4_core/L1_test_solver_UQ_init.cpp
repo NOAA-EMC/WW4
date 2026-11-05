@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-05
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -251,6 +251,90 @@ TEST(SolverUQInitTest,
 
   std::remove("my_uq_grid_mismatch.nc");
   std::remove("my_uq_grid_mismatch.partitions.nc");
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, PartitionMetadataMismatchLogsErrorAndRegenerates) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_metadiff.nc";
+  getMutableRunConfig().numRanksCompute = 1;
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_metadiff.nc", 10, 10);
+
+  // Read grid, then modify an attribute before writing partition file
+  ww4::io::UgridGrid ugrid;
+  ASSERT_EQ(ww4::io::readUQgrid("my_uq_grid_metadiff.nc", ugrid), 0);
+  ugrid.title = "Different Title";
+
+  std::vector<int32_t> partMap(10 * 10, 1);
+  ASSERT_EQ(ww4::io::writeUQpartitionMapNetCDF(
+                "my_uq_grid_metadiff.partitions.nc", ugrid, 1, partMap),
+            0);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find("Partition read error     : Metadata in partition "
+                        "file does not match grid file"),
+            std::string::npos);
+  EXPECT_NE(output.find("Creating the partition map for 1 partitions"),
+            std::string::npos);
+
+  // Check that the partition file was updated with original grid title
+  ww4::io::PartitionMapData updatedPart;
+  ASSERT_EQ(ww4::io::readUQpartitionMapNetCDF(
+                "my_uq_grid_metadiff.partitions.nc", updatedPart),
+            0);
+  EXPECT_EQ(updatedPart.title, "my_uq_grid_metadiff.nc");
+
+  std::remove("my_uq_grid_metadiff.nc");
+  std::remove("my_uq_grid_metadiff.partitions.nc");
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, PartitionDimensionsMismatchLogsErrorAndRegenerates) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_dimdiff.nc";
+  getMutableRunConfig().numRanksCompute = 1;
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_dimdiff.nc", 10, 10);
+
+  // Create partition file with 8x8 instead of 10x10
+  ww4::io::UgridGrid ugrid8;
+  ww4::test_helpers::createMinimalUgridFile("temp_8x8.nc", 8, 8);
+  ASSERT_EQ(ww4::io::readUQgrid("temp_8x8.nc", ugrid8), 0);
+  std::remove("temp_8x8.nc");
+
+  // Keep title matching so title doesn't trigger it, but dimensions do
+  ugrid8.title = "Minimal UGRID Grid";
+  std::vector<int32_t> partMap8(8 * 8, 1);
+  ASSERT_EQ(ww4::io::writeUQpartitionMapNetCDF(
+                "my_uq_grid_dimdiff.partitions.nc", ugrid8, 1, partMap8),
+            0);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find("Partition read error     : Metadata in partition "
+                        "file does not match grid file"),
+            std::string::npos);
+  EXPECT_NE(output.find("Creating the partition map for 1 partitions"),
+            std::string::npos);
+
+  // Verify updated partition has 10x10
+  ww4::io::PartitionMapData updatedPart;
+  ASSERT_EQ(ww4::io::readUQpartitionMapNetCDF(
+                "my_uq_grid_dimdiff.partitions.nc", updatedPart),
+            0);
+  EXPECT_EQ(updatedPart.nx, 10u);
+  EXPECT_EQ(updatedPart.ny, 10u);
+
+  std::remove("my_uq_grid_dimdiff.nc");
+  std::remove("my_uq_grid_dimdiff.partitions.nc");
   resetInternalState();
 }
 

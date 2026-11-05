@@ -66,7 +66,13 @@ struct DomainPartition {
  *   After initial bisection, an iterative refinement phase adjusts partition
  *   boundaries to balance the sea point count across partitions.
  *
- * Disconnected Piece Refinement Stage:
+ * Disconnected Piece Refinement Stage and Squareness Techniques (ww4_gspl):
+ *   To keep partitions as square as possible and prevent jagged boundaries,
+ *   bisection evaluates domain aspect ratio along major axes, boundary swaps
+ *   prioritize underloaded partitions sharing the highest neighbor
+ *   connectivity (minimizing perimeter increases and preventing 1-cell
+ *   peninsulas), and disconnected piece checks run periodically every 5
+ *   iterations during iterative refinement.
  *   Identifies connected components for each partition using 4-connectivity.
  *   If a small piece of a partition is disconnected from the bulk of the
  *   partition, and this small piece has neighboring partitions, the small
