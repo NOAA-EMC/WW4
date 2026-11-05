@@ -20,7 +20,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-05
  */
 
 #pragma once
@@ -59,7 +59,8 @@ struct DomainPartition {
  * Domain Partitioning Algorithm Lifecycle:
  * Initial Stage:
  *   Recursive bisection splits the global grid bounding box into rectangular
- *   sub-domains based on active sea point counts (where land_sea_map > 0).
+ *   sub-domains based on active sea point counts (where cell is wet and not
+ * excluded).
  *
  * Refinement Stage (Iterative Boundary Balancing):
  *   After initial bisection, an iterative refinement phase adjusts partition
@@ -88,7 +89,8 @@ struct DomainPartition {
  * @param nx Number of longitudinal grid columns (x-dimension).
  * @param ny Number of latitudinal grid rows (y-dimension).
  * @param land_sea_map 2D grid status mask (row-major, size nx * ny), where
- * values > 0 indicate sea points and <= 0 indicate land points.
+ * values 1 and 2 indicate wet sea points, 0 indicates land, and 3 indicates
+ * excluded points.
  * @param num_partitions Total number of target partitions (must be >= 1).
  * @param max_iterations Maximum number of iterative refinement passes (default:
  * 100). Set to 0 to bypass iterative refinement.

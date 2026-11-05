@@ -128,6 +128,10 @@ grid:
   # Options: "no" (default), "yes"
   intermediate_maps: "no"
 
+  # Maximum number of iterative boundary refinement passes during domain
+  # decomposition. Default: 100.
+  max_iterations: 100
+
 forcing:
   # Mandatory input field options.
   # Options: "none", "from_file", "from_coupling", "homogeneous", "from_grid"

@@ -263,8 +263,8 @@ void solver_UQ_init(std::ostream &os) {
     // Compute partition map using domain partitioning routine
     partitionMap = ww4_utils::UQ_utils::partitionGlobalGrid(
         static_cast<int>(ugrid.nx), static_cast<int>(ugrid.ny),
-        fullGrid.landMask, getRunConfig().numRanksCompute, 100, nullptr,
-        rectData.isGlobal, recorder);
+        fullGrid.landMask, getRunConfig().numRanksCompute,
+        getRunConfig().maxIterations, nullptr, rectData.isGlobal, recorder);
 
     // If partition map is successfully created, write or finalize partition
     // file

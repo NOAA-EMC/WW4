@@ -178,6 +178,44 @@ TEST(UQDomainsTest, PartitionGlobalGridZeroIterations) {
   EXPECT_EQ(unique_partitions.size(), static_cast<size_t>(num_partitions));
 }
 
+// --- PartitionGlobalGridExcludedPointsTest ----------------------------------
+// Tests isWetPoint logic ensuring excluded points (value 3) receive partition 0
+TEST(UQDomainsTest, PartitionGlobalGridExcludedPoints) {
+  const int nx = 6;
+  const int ny = 6;
+  std::vector<int> land_sea_map(nx * ny, 1); // Wet sea points
+
+  // Set top row as boundary points (2)
+  for (int x = 0; x < nx; ++x) {
+    land_sea_map[0 * nx + x] = 2;
+  }
+  // Set bottom row as excluded points (3)
+  for (int x = 0; x < nx; ++x) {
+    land_sea_map[(ny - 1) * nx + x] = 3;
+  }
+  // Set column 0 as land (0)
+  for (int y = 0; y < ny; ++y) {
+    land_sea_map[y * nx + 0] = 0;
+  }
+
+  int num_partitions = 2;
+  std::vector<int> partition_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (land_sea_map[i] == 1 || land_sea_map[i] == 2) {
+      // Wet sea and boundary points receive valid partition IDs
+      EXPECT_GE(partition_map[i], 1);
+      EXPECT_LE(partition_map[i], num_partitions);
+    } else {
+      // Land (0) and excluded points (3) receive partition 0
+      EXPECT_EQ(partition_map[i], 0);
+    }
+  }
+}
+
 TEST(UQDomainsTest, PartitionGlobalGridConsecutiveMapRecording) {
   int nx = 8;
   int ny = 8;

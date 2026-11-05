@@ -300,6 +300,16 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
         config.intermediateMaps =
             (cleanValue(node["intermediate_maps"].as<std::string>()) == "yes");
       }
+      if (node["max_iterations"]) {
+        try {
+          config.maxIterations = node["max_iterations"].as<int>();
+          if (config.maxIterations < 0) {
+            config.maxIterations = 100;
+          }
+        } catch (...) {
+          config.maxIterations = 100;
+        }
+      }
     }
 
     // === General section =====================================================
