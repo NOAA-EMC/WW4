@@ -126,8 +126,8 @@ def read_grid_mask(grid_filepath: Path) -> np.ndarray | None:
                     nx_len = nx.size if hasattr(nx, "size") else int(nx)
                     if mask_var.size == ny_len * nx_len:
                         return mask_var.reshape((ny_len, nx_len))
-    except Exception:
-        pass
+    except (OSError, KeyError, ValueError) as err:
+        print(f"Notice: Could not load mask from associated grid file: {err}")
     return None
 
 
