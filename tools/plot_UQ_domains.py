@@ -43,7 +43,6 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Optional
 
 try:
     import matplotlib.pyplot as plt
@@ -119,7 +118,7 @@ def plot_single_map(
     total_maps: int,
     num_partitions: int,
     title_prefix: str,
-    output_path: Optional[Path] = None,
+    output_path: Path | None = None,
 ):
     """
     Plot a single partition map slice on a Cartesian grid with equal aspect ratio.
