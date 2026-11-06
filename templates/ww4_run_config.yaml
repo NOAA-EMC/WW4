@@ -128,6 +128,11 @@ grid:
   # Options: "no" (default), "yes"
   intermediate_maps: "no"
 
+  # Option to write the extracted local domain grid including halo points to a
+  # NetCDF file (<BASE_NAME>_ugrid_part<NNN>.nc).
+  # Options: "no" (default), "yes"
+  write_local_grid: "no"
+
   # Maximum number of iterative boundary refinement passes during domain
   # decomposition. Default: 100.
   max_iterations: 100

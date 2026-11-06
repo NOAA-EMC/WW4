@@ -433,4 +433,47 @@ TEST(SolverUQInitTest, OutputHistogramFinalDomainSizes) {
   resetInternalState();
 }
 
+TEST(SolverUQInitTest, WriteLocalGridGeneratesLocalUgridFile) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_local_test_ugrid.nc";
+  getMutableRunConfig().numRanks = 3;
+  getMutableRunConfig().numRanksCompute = 2;
+  getMutableRunConfig().actualRank = 0;
+  getMutableRunConfig().writeLocalGrid = true;
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  ww4::test_helpers::createMinimalUgridFile("my_local_test_ugrid.nc", 8, 8);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find("Local domain grid file   :"), std::string::npos);
+  EXPECT_NE(output.find("my_local_test_ugrid_part000.nc"), std::string::npos);
+
+  // Read the generated local domain file and verify its contents
+  ww4::io::UgridGrid localUgrid;
+  int readStatus =
+      ww4::io::readUQgrid("my_local_test_ugrid_part000.nc", localUgrid);
+  EXPECT_EQ(readStatus, 0);
+  EXPECT_GT(localUgrid.nx, 0u);
+  EXPECT_GT(localUgrid.ny, 0u);
+  EXPECT_EQ(localUgrid.grid_mask.size(), localUgrid.nx * localUgrid.ny);
+
+  // Verify that the local grid mask contains wet points (1 or 2)
+  bool hasActive = false;
+  for (int m : localUgrid.grid_mask) {
+    if (m == 1 || m == 2) {
+      hasActive = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(hasActive);
+
+  std::remove("my_local_test_ugrid.nc");
+  std::remove("my_local_test_ugrid.partitions.nc");
+  std::remove("my_local_test_ugrid_part000.nc");
+  resetInternalState();
+}
+
 } // namespace ww4_core

@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-06
  */
 
 #pragma once
@@ -238,7 +238,7 @@ struct HomogeneousDataPoint {
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-02
+ * @date Last update : 2026-11-06
  * @var RunConfig::calendarType
  * @brief Calendar type.
  * @var RunConfig::produceStdOut
@@ -261,6 +261,8 @@ struct HomogeneousDataPoint {
  * @brief Optional printing of grid file metadata flag.
  * @var RunConfig::intermediateMaps
  * @brief Option to save each consecutive map during partitioning to file flag.
+ * @var RunConfig::writeLocalGrid
+ * @brief Option to write extracted local domain grid to NetCDF file flag.
  * @var RunConfig::maxIterations
  * @brief Maximum number of boundary refinement iterations during domain
  * decomposition.
@@ -326,6 +328,7 @@ struct RunConfig {
   std::string gridFile;
   bool printGridMeta = false;
   bool intermediateMaps = false;
+  bool writeLocalGrid = false;
   int maxIterations = 100;
 
   SolverType solver = SolverType::Undefined;
