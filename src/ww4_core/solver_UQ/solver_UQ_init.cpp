@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-05
+ * @date Last update : 2026-11-06
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -30,8 +30,11 @@
 #include "ww4_utils/ww4_logfile.h"
 #include "ww4_utils/ww4_run_config.h"
 #include "ww4_utils/ww4_std_out.h"
+#include <algorithm>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
+#include <map>
 
 namespace ww4_core {
 
@@ -338,6 +341,41 @@ void solver_UQ_init(std::ostream &os) {
     // Populate partition map from successfully read file
     partitionMap.assign(partData.partition_map.begin(),
                         partData.partition_map.end());
+  }
+
+  // Compute final domain sizes (sea points per partition) and output histogram
+  if (!partitionMap.empty() && getRunConfig().numRanksCompute > 0) {
+    std::vector<int> domainSizes(getRunConfig().numRanksCompute + 1, 0);
+    for (size_t i = 0; i < partitionMap.size(); ++i) {
+      int pid = partitionMap[i];
+      if (pid >= 1 && pid <= getRunConfig().numRanksCompute &&
+          (fullGrid.landMask.empty() || fullGrid.landMask[i] == 1 ||
+           fullGrid.landMask[i] == 2)) {
+        domainSizes[pid]++;
+      }
+    }
+
+    // Sort domain sizes and group per size in histogram format
+    std::map<int, int> sizeHistogram;
+    for (int p = 1; p <= getRunConfig().numRanksCompute; ++p) {
+      sizeHistogram[domainSizes[p]]++;
+    }
+
+    auto printHistogram = [&](std::ostream &out) {
+      out << "     Final domain sizes:" << std::endl;
+      for (const auto &[sz, count] : sizeHistogram) {
+        out << "        " << std::setw(6) << sz
+            << " points : " << std::string(count, '*') << " (" << count << ")"
+            << std::endl;
+      }
+    };
+
+    if (getRunConfig().produceStdOut) {
+      printHistogram(os);
+    }
+    if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+      printHistogram(getLogFileStream());
+    }
   }
 
   // Suppress unused variable warning pending sub-domain extraction integration
