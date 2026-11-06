@@ -22,8 +22,10 @@
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
 #include "ww4_core/solver_UQ/UQ_domains.h"
+#include "ww4_core/solver_UQ/UQ_one_domain.h"
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.h"
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_write_grid.h"
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_write_partition.h"
 #include "ww4_core/w4core_init.h"
 #include "ww4_utils/spatial_grid.h"
@@ -31,10 +33,12 @@
 #include "ww4_utils/ww4_run_config.h"
 #include "ww4_utils/ww4_std_out.h"
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <map>
+#include <sstream>
 
 namespace ww4_core {
 
@@ -384,10 +388,263 @@ void solver_UQ_init(std::ostream &os) {
                         partData.partition_map.end());
   }
 
-  // Suppress unused variable warning pending sub-domain extraction integration
-  (void)partitionMap;
+  // === Extract local grid ===================================================
 
-  // === Halo communication setup =============================================
+  // Prepare FullGrid structure for single subdomain extraction
+  ww4_utils::UQ_utils::FullGrid uqFullGrid;
+  uqFullGrid.nx = static_cast<int>(ugrid.nx);
+  uqFullGrid.ny = static_cast<int>(ugrid.ny);
+  uqFullGrid.is_global = rectData.isGlobal;
+  uqFullGrid.land_sea_map = fullGrid.landMask;
+  uqFullGrid.longitude = fullGrid.xCoordinates;
+  uqFullGrid.latitude = fullGrid.yCoordinates;
+  uqFullGrid.topobathy = fullGrid.topobathy;
+  if (!fullGrid.shared.obstructionX.empty()) {
+    uqFullGrid.subgrid_obs_x = fullGrid.shared.obstructionX;
+  }
+  if (!fullGrid.shared.obstructionY.empty()) {
+    uqFullGrid.subgrid_obs_y = fullGrid.shared.obstructionY;
+  }
+
+  // Domain ID for actual compute rank (1-based ID matching partitionMap)
+  const int targetDomainId = getRunConfig().actualRank + 1;
+  constexpr int defaultHaloWidth = 2;
+
+  // Extract reduced domain grid including halo cells
+  ww4_utils::UQ_utils::ReducedGrid reducedGrid =
+      ww4_utils::UQ_utils::extractOneDomain(uqFullGrid, partitionMap,
+                                            targetDomainId, defaultHaloWidth,
+                                            rectData.isGlobal);
+
+  // Initialize and populate LocalGridPartition
+  ww4_utils::LocalGridPartition localPartition;
+  localPartition.clear();
+  localPartition.gridType = ww4_utils::GridType::Rectangular;
+  localPartition.shared.gridType = ww4_utils::GridType::Rectangular;
+  localPartition.rankId = getRunConfig().actualRank;
+  localPartition.localNx = reducedGrid.nx_local;
+  localPartition.localNy = reducedGrid.ny_local;
+  localPartition.localNumNodes =
+      static_cast<std::size_t>(reducedGrid.nx_local * reducedGrid.ny_local);
+  localPartition.haloSizeX = defaultHaloWidth;
+  localPartition.haloSizeY = defaultHaloWidth;
+
+  if (reducedGrid.nx_local > 0 && reducedGrid.ny_local > 0) {
+    localPartition.xCoordinates = reducedGrid.longitude;
+    localPartition.shared.xCoordinates = localPartition.xCoordinates;
+    localPartition.yCoordinates = reducedGrid.latitude;
+    localPartition.shared.yCoordinates = localPartition.yCoordinates;
+    localPartition.topobathy = reducedGrid.topobathy;
+    localPartition.shared.topobathy = localPartition.topobathy;
+
+    // Build local domain grid mask:
+    // 0 = Land (dry)
+    // 1 = Sea / wet (active calculation points owned by target domain)
+    // 2 = Boundary points
+    // 3 = Excluded points (wet points outside domain and halo, or boundary
+    //     points not adjacent to wet/active calculation points)
+    const int loc_nx = reducedGrid.nx_local;
+    const int loc_ny = reducedGrid.ny_local;
+    const std::size_t loc_total = static_cast<std::size_t>(loc_nx * loc_ny);
+
+    // Identify which cells in reducedGrid are owned by the target domain
+    std::vector<bool> isTargetDomain(loc_total, false);
+    for (std::size_t i = 0; i < loc_total; ++i) {
+      if (reducedGrid.partition_map[i] == targetDomainId) {
+        isTargetDomain[i] = true;
+      }
+    }
+
+    // Identify halo points of halo width surrounding the target domain
+    std::vector<bool> isHalo(loc_total, false);
+    for (int y = 0; y < loc_ny; ++y) {
+      for (int x = 0; x < loc_nx; ++x) {
+        const int idx = y * loc_nx + x;
+        if (isTargetDomain[idx]) {
+          continue;
+        }
+        // Check Chebyshev distance to any cell in the target domain
+        bool nearTarget = false;
+        const int y_min_box = std::max(0, y - defaultHaloWidth);
+        const int y_max_box = std::min(loc_ny - 1, y + defaultHaloWidth);
+        const int x_min_box = std::max(0, x - defaultHaloWidth);
+        const int x_max_box = std::min(loc_nx - 1, x + defaultHaloWidth);
+
+        for (int by = y_min_box; by <= y_max_box && !nearTarget; ++by) {
+          for (int bx = x_min_box; bx <= x_max_box; ++bx) {
+            if (isTargetDomain[by * loc_nx + bx]) {
+              nearTarget = true;
+              break;
+            }
+          }
+        }
+        if (nearTarget) {
+          isHalo[idx] = true;
+        }
+      }
+    }
+
+    std::vector<int> localMask(loc_total, 0);
+    // Initial pass: populate base values and mark non-domain, non-halo wet
+    // points as excluded (3)
+    for (std::size_t i = 0; i < loc_total; ++i) {
+      const int g_mask = reducedGrid.land_sea_map[i];
+      if (g_mask == 0) {
+        // Land remains land
+        localMask[i] = 0;
+      } else if (isTargetDomain[i]) {
+        // Points belonging to target domain retain original mask (1 or 2)
+        localMask[i] = g_mask;
+      } else if (isHalo[i]) {
+        // Halo wet or boundary points retain original status
+        localMask[i] = g_mask;
+      } else {
+        // Wet points outside target domain and outside halo become excluded (3)
+        localMask[i] = 3;
+      }
+    }
+
+    // Second pass: boundary points (2) that are not adjacent to any wet/active
+    // calculation points (localMask == 1) in the new grid become excluded (3)
+    const int dx8[] = {-1, 0, 1, -1, 1, -1, 0, 1};
+    const int dy8[] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    for (int y = 0; y < loc_ny; ++y) {
+      for (int x = 0; x < loc_nx; ++x) {
+        const int idx = y * loc_nx + x;
+        if (localMask[idx] == 2) {
+          bool adjToWet = false;
+          for (int k = 0; k < 8; ++k) {
+            const int nx_k = x + dx8[k];
+            const int ny_k = y + dy8[k];
+            if (nx_k >= 0 && nx_k < loc_nx && ny_k >= 0 && ny_k < loc_ny) {
+              if (localMask[ny_k * loc_nx + nx_k] == 1) {
+                adjToWet = true;
+                break;
+              }
+            }
+          }
+          if (!adjToWet) {
+            localMask[idx] = 3;
+          }
+        }
+      }
+    }
+
+    localPartition.landMask = localMask;
+    localPartition.shared.landMask = localPartition.landMask;
+
+    // Optional writing of extracted local domain grid to NetCDF file
+    if (getRunConfig().writeLocalGrid) {
+      // Derive local domain grid filename: <BASE_NAME>_ugrid_part<NNN>.nc
+      std::string stem = gridFilePath.stem().string();
+      std::string baseName;
+      if (stem.size() >= 6 && stem.rfind("_ugrid") == stem.size() - 6) {
+        baseName = stem.substr(0, stem.size() - 6);
+      } else {
+        baseName = stem;
+      }
+
+      // Format zero-padded 0-based partition number <NNN>
+      const int numRanks = getRunConfig().numRanksCompute;
+      const int maxRank = std::max(0, numRanks - 1);
+      int numDigits = 1;
+      int tempVal = maxRank;
+      while (tempVal >= 10) {
+        tempVal /= 10;
+        numDigits++;
+      }
+      const int padWidth = std::max(3, numDigits);
+
+      std::ostringstream partNumOss;
+      partNumOss << std::setw(padWidth) << std::setfill('0')
+                 << getRunConfig().actualRank;
+      const std::string localGridFileName =
+          baseName + "_ugrid_part" + partNumOss.str() + ".nc";
+
+      std::filesystem::path localGridPath =
+          gridFilePath.has_parent_path()
+              ? (gridFilePath.parent_path() / localGridFileName)
+              : std::filesystem::path(localGridFileName);
+
+      // Construct local UgridGrid for NetCDF export
+      ww4::io::UgridGrid localUgrid;
+      localUgrid.nx = static_cast<std::size_t>(loc_nx);
+      localUgrid.ny = static_cast<std::size_t>(loc_ny);
+      localUgrid.title = ugrid.title.empty() ? localGridFileName : ugrid.title;
+      localUgrid.source = ugrid.source;
+      localUgrid.grid_type = ugrid.grid_type;
+      localUgrid.coord_type = ugrid.coord_type;
+      localUgrid.global_closure = "none";
+      localUgrid.bathy_source = ugrid.bathy_source;
+      localUgrid.bound_source = ugrid.bound_source;
+      localUgrid.conventions = ugrid.conventions;
+      localUgrid.history = ugrid.history;
+      localUgrid.global_attrs = ugrid.global_attrs;
+
+      // 2D grid coordinates and fields
+      localUgrid.grid_lon.resize(loc_total);
+      localUgrid.grid_lat.resize(loc_total);
+      for (int y = 0; y < loc_ny; ++y) {
+        for (int x = 0; x < loc_nx; ++x) {
+          const int idx = y * loc_nx + x;
+          localUgrid.grid_lon[idx] = reducedGrid.longitude[x];
+          localUgrid.grid_lat[idx] = reducedGrid.latitude[y];
+        }
+      }
+
+      localUgrid.grid_depth.resize(loc_total);
+      for (std::size_t i = 0; i < loc_total; ++i) {
+        localUgrid.grid_depth[i] = static_cast<float>(reducedGrid.topobathy[i]);
+      }
+
+      localUgrid.grid_mask.resize(loc_total);
+      for (std::size_t i = 0; i < loc_total; ++i) {
+        localUgrid.grid_mask[i] = static_cast<int32_t>(localMask[i]);
+      }
+
+      if (!reducedGrid.subgrid_obs_x.empty()) {
+        localUgrid.has_obsx = true;
+        localUgrid.grid_ObsX.resize(loc_total);
+        for (std::size_t i = 0; i < loc_total; ++i) {
+          localUgrid.grid_ObsX[i] =
+              static_cast<float>(reducedGrid.subgrid_obs_x[i]);
+        }
+      }
+
+      if (!reducedGrid.subgrid_obs_y.empty()) {
+        localUgrid.has_obsy = true;
+        localUgrid.grid_ObsY.resize(loc_total);
+        for (std::size_t i = 0; i < loc_total; ++i) {
+          localUgrid.grid_ObsY[i] =
+              static_cast<float>(reducedGrid.subgrid_obs_y[i]);
+        }
+      }
+
+      const int writeStatus = ww4::io::writeUQgrid(localGridPath, localUgrid);
+      if (writeStatus == 0) {
+        const std::string localPathStr = localGridPath.string();
+        if (getRunConfig().produceStdOut) {
+          os << "     Local domain grid file   : " << localPathStr << std::endl;
+        }
+        if (getRunConfig().produceLogFile && getLogFileStream().is_open()) {
+          getLogFileStream()
+              << "     Local domain grid file   : " << localPathStr
+              << std::endl;
+        }
+      }
+    }
+  }
+
+  // Suppress unused variable warning pending subsequent solver stages
+  (void)localPartition;
+
+  // === Cross-mapping local and full grids ====================================
+  // Placeholder for establishing bidirectional index mappings between full grid
+  // storage arrays and local domain storage arrays:
+  // - Generate 2D-to-1D and 1D-to-2D storage maps for active wet points.
+  // - Correlate local domain wet points to global domain storage indices.
+
+  // === Set up halo communication ============================================
   // Placeholder for initializing halo communication structures:
   // - Identify neighbor MPI ranks for sub-domain boundaries in X and Y
   // directions.

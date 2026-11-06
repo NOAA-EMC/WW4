@@ -210,6 +210,77 @@ TEST(RunConfigTest, PrintGridMetaParsing) {
   }
 }
 
+TEST(RunConfigTest, WriteLocalGridParsing) {
+  // Case 1: Default to false when omitted
+  {
+    const std::string filename = "test_write_local_grid_default.yaml";
+    std::ofstream file(filename);
+    file << "grid:\n";
+    file << "  grid_file: test_grid.nc\n";
+    file << "general:\n";
+    file << "  time_step: 3600.0\n";
+    file << "physics:\n";
+    file << "  solver: UQ\n";
+    file << "  linear_input: LN1\n";
+    file << "  input_dissipation: ST4\n";
+    file << "  nonlinear_interactions: NL1\n";
+    file << "  bottom_friction: BT1\n";
+    file << "forcing:\n";
+    file << "  water_levels: none\n";
+    file << "  currents: none\n";
+    file << "  winds: none\n";
+    file << "  ice_concentrations: none\n";
+    file << "  bottom_depth: from_grid\n";
+    file.close();
+
+    const auto config = loadRunConfig(filename, std::cerr);
+    ASSERT_TRUE(config.has_value());
+    EXPECT_FALSE(config->writeLocalGrid);
+
+    std::stringstream ss;
+    reportRunConfig(*config, ss);
+    EXPECT_NE(ss.str().find("Write local domain grid  : no"),
+              std::string::npos);
+
+    std::remove(filename.c_str());
+  }
+
+  // Case 2: Explicitly "yes"
+  {
+    const std::string filename = "test_write_local_grid_yes.yaml";
+    std::ofstream file(filename);
+    file << "grid:\n";
+    file << "  grid_file: test_grid.nc\n";
+    file << "  write_local_grid: \"yes\"\n";
+    file << "general:\n";
+    file << "  time_step: 3600.0\n";
+    file << "physics:\n";
+    file << "  solver: UQ\n";
+    file << "  linear_input: LN1\n";
+    file << "  input_dissipation: ST4\n";
+    file << "  nonlinear_interactions: NL1\n";
+    file << "  bottom_friction: BT1\n";
+    file << "forcing:\n";
+    file << "  water_levels: none\n";
+    file << "  currents: none\n";
+    file << "  winds: none\n";
+    file << "  ice_concentrations: none\n";
+    file << "  bottom_depth: from_grid\n";
+    file.close();
+
+    const auto config = loadRunConfig(filename, std::cerr);
+    ASSERT_TRUE(config.has_value());
+    EXPECT_TRUE(config->writeLocalGrid);
+
+    std::stringstream ss;
+    reportRunConfig(*config, ss);
+    EXPECT_NE(ss.str().find("Write local domain grid  : yes"),
+              std::string::npos);
+
+    std::remove(filename.c_str());
+  }
+}
+
 TEST(RunConfigTest, IntermediateMapsParsing) {
   // Case 1: Default to false when omitted
   {
