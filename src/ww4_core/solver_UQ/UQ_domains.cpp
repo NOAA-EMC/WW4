@@ -541,7 +541,7 @@ int dealWithSmallGridExtensions(
     [[maybe_unused]] int nx, [[maybe_unused]] int ny,
     [[maybe_unused]] std::span<const int> land_sea_map,
     [[maybe_unused]] int num_partitions,
-    [[maybe_unused]] std::vector<int> &partition_map,
+    [[maybe_unused]] const std::vector<int> &partition_map,
     [[maybe_unused]] bool is_global = false) {
   // Placeholder for now
   return 0;
