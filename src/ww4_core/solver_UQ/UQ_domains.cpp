@@ -28,6 +28,8 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <iomanip>
+#include <iostream>
 #include <set>
 #include <span>
 #include <vector>
@@ -165,6 +167,148 @@ void recursiveBisectDomain(int x_min, int x_max, int y_min, int y_max, int nx,
       }
     }
   }
+}
+
+// --- determineDomainNeighbors -----------------------------------------------
+/**
+ * @brief Identifies 4-connected spatial neighbors for each domain.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param partition_map Current partition ID assignments.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @return Vector of neighbor ID sets for each partition ID (1-based index).
+ */
+std::vector<std::set<int>> determineDomainNeighbors(
+    int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
+    const std::vector<int> &partition_map, bool is_global = false) {
+  std::vector<std::set<int>> partition_neighbors(num_partitions + 1);
+  if (num_partitions <= 1 || nx <= 0 || ny <= 0) {
+    return partition_neighbors;
+  }
+
+  const int dx[] = {0, 0, -1, 1};
+  const int dy[] = {-1, 1, 0, 0};
+
+  for (int y = 0; y < ny; ++y) {
+    for (int x = 0; x < nx; ++x) {
+      int idx = y * nx + x;
+      if (!isWetPoint(land_sea_map[idx])) {
+        continue;
+      }
+      int p1 = partition_map[idx];
+      if (p1 < 1 || p1 > num_partitions) {
+        continue;
+      }
+
+      for (int k = 0; k < 4; ++k) {
+        int nbr_x = x + dx[k];
+        int nbr_y = y + dy[k];
+        if (nbr_y < 0 || nbr_y >= ny) {
+          continue;
+        }
+        if (is_global) {
+          nbr_x = (nbr_x + nx) % nx;
+        } else if (nbr_x < 0 || nbr_x >= nx) {
+          continue;
+        }
+
+        int nbr_idx = nbr_y * nx + nbr_x;
+        if (isWetPoint(land_sea_map[nbr_idx])) {
+          int p2 = partition_map[nbr_idx];
+          if (p2 >= 1 && p2 <= num_partitions && p2 != p1) {
+            partition_neighbors[p1].insert(p2);
+          }
+        }
+      }
+    }
+  }
+
+  return partition_neighbors;
+}
+
+// --- printDomainStats -------------------------------------------------------
+/**
+ * @brief Prints diagnostic domain statistics to stdout.
+ * @details Outputs highest and lowest grid point counts per partition, and
+ * the size of the largest partition as a percentage of the target domain size.
+ * @param min_points Lowest number of grid points in a partition.
+ * @param max_points Highest number of grid points in a partition.
+ * @param largest_pct Percentage of largest partition relative to target.
+ * @param target_size Target domain size (total wet points / num_partitions,
+ * rounded up).
+ */
+void printDomainStats(int min_points, int max_points, double largest_pct,
+                      int target_size) {
+  std::cout << "Domain partition stats: Highest = " << max_points
+            << ", Lowest = " << min_points << ", Largest = " << std::fixed
+            << std::setprecision(1) << largest_pct << "% of target ("
+            << target_size << ")" << std::endl;
+}
+
+// --- resortDomainsBySize ----------------------------------------------------
+/**
+ * @brief Re-sorts domains by active wet cell count in descending order.
+ * @details Remaps partition IDs 1..num_partitions such that domain 1 has the
+ * highest number of wet points and domain num_partitions has the lowest.
+ * Reassigns cell values in partition_map in place and recalculates neighbor
+ * connectivity.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param[in,out] partition_map Vector of partition assignments.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @param[out] partition_counts Vector of cell counts per sorted partition ID.
+ * @param[out] partition_neighbors Vector of neighbor sets per sorted partition
+ * ID.
+ */
+void resortDomainsBySize(int nx, int ny, std::span<const int> land_sea_map,
+                         int num_partitions, std::vector<int> &partition_map,
+                         bool is_global, std::vector<int> &partition_counts,
+                         std::vector<std::set<int>> &partition_neighbors) {
+  partition_counts.assign(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    int p = partition_map[i];
+    if (isWetPoint(land_sea_map[i]) && p >= 1 && p <= num_partitions) {
+      partition_counts[p]++;
+    }
+  }
+
+  std::vector<std::pair<int, int>> domain_list;
+  domain_list.reserve(num_partitions);
+  for (int p = 1; p <= num_partitions; ++p) {
+    domain_list.emplace_back(partition_counts[p], p);
+  }
+
+  std::sort(domain_list.begin(), domain_list.end(),
+            [](const std::pair<int, int> &a, const std::pair<int, int> &b) {
+              if (a.first != b.first) {
+                return a.first > b.first;
+              }
+              return a.second < b.second;
+            });
+
+  std::vector<int> old_to_new(num_partitions + 1, 0);
+  std::vector<int> sorted_counts(num_partitions + 1, 0);
+  for (int r = 0; r < num_partitions; ++r) {
+    int new_id = r + 1;
+    int old_id = domain_list[r].second;
+    old_to_new[old_id] = new_id;
+    sorted_counts[new_id] = domain_list[r].first;
+  }
+
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    int old_id = partition_map[i];
+    if (old_id >= 1 && old_id <= num_partitions) {
+      partition_map[i] = old_to_new[old_id];
+    }
+  }
+
+  partition_counts = std::move(sorted_counts);
+  partition_neighbors = determineDomainNeighbors(
+      nx, ny, land_sea_map, num_partitions, partition_map, is_global);
 }
 
 // --- reassignDisconnectedPieces ---------------------------------------------
@@ -382,6 +526,419 @@ int reassignDisconnectedPieces(int nx, int ny,
   return total_reassignments;
 }
 
+// --- dealWithSmallGridExtensions --------------------------------------------
+/**
+ * @brief Placeholder subroutine to deal with small grid extensions.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param[in,out] partition_map Partition assignments vector.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @return Number of cell adjustments executed.
+ */
+int dealWithSmallGridExtensions(
+    [[maybe_unused]] int nx, [[maybe_unused]] int ny,
+    [[maybe_unused]] std::span<const int> land_sea_map,
+    [[maybe_unused]] int num_partitions,
+    [[maybe_unused]] std::vector<int> &partition_map,
+    [[maybe_unused]] bool is_global = false) {
+  // Placeholder for now
+  return 0;
+}
+
+// --- rebalanceIsolatedSmallestDomain ----------------------------------------
+/**
+ * @brief Rebalances an isolated smallest domain (< 70% target) by transferring
+ * a coherent part from the largest domain that has neighbors.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param[in,out] partition_map Partition IDs vector to update.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @param[in,out] partition_counts Vector of wet cell counts per partition.
+ * @param[in,out] partition_neighbors Vector of neighbor sets per partition.
+ * @param target_size Target domain size (ceil(total_wet / num_partitions)).
+ * @return True if a transfer was performed; false otherwise.
+ */
+bool rebalanceIsolatedSmallestDomain(
+    int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
+    std::vector<int> &partition_map, bool is_global,
+    std::vector<int> &partition_counts,
+    std::vector<std::set<int>> &partition_neighbors, int target_size) {
+  if (num_partitions <= 1) {
+    return false;
+  }
+
+  int smallest_p = num_partitions;
+  if (!partition_neighbors[smallest_p].empty()) {
+    return false;
+  }
+
+  double threshold = 0.70 * static_cast<double>(target_size);
+  if (static_cast<double>(partition_counts[smallest_p]) >= threshold) {
+    return false;
+  }
+
+  // Find largest domain that has neighbors
+  int largest_with_nbrs = -1;
+  for (int p = 1; p <= num_partitions; ++p) {
+    if (!partition_neighbors[p].empty() && partition_counts[p] > 0) {
+      largest_with_nbrs = p;
+      break;
+    }
+  }
+
+  if (largest_with_nbrs == -1) {
+    return false;
+  }
+
+  int needed = target_size - partition_counts[smallest_p];
+  if (needed <= 0) {
+    return false;
+  }
+
+  int max_take = partition_counts[largest_with_nbrs] - 1;
+  if (max_take <= 0) {
+    return false;
+  }
+  int points_to_transfer = std::min(needed, max_take);
+
+  // Extract a coherent part of largest_with_nbrs using BFS
+  int start_cell = -1;
+  for (int y = 0; y < ny; ++y) {
+    for (int x = 0; x < nx; ++x) {
+      int idx = y * nx + x;
+      if (isWetPoint(land_sea_map[idx]) &&
+          partition_map[idx] == largest_with_nbrs) {
+        start_cell = idx;
+        break;
+      }
+    }
+    if (start_cell != -1) {
+      break;
+    }
+  }
+
+  if (start_cell == -1) {
+    return false;
+  }
+
+  const int dx[] = {0, 0, -1, 1};
+  const int dy[] = {-1, 1, 0, 0};
+
+  std::vector<int> transferred_cells;
+  transferred_cells.reserve(points_to_transfer);
+
+  std::vector<bool> visited(nx * ny, false);
+  std::vector<int> queue;
+  queue.push_back(start_cell);
+  visited[start_cell] = true;
+
+  size_t head = 0;
+  while (head < queue.size() &&
+         static_cast<int>(transferred_cells.size()) < points_to_transfer) {
+    int curr = queue[head++];
+    transferred_cells.push_back(curr);
+
+    int cx = curr % nx;
+    int cy = curr / nx;
+
+    for (int k = 0; k < 4; ++k) {
+      int nbr_x = cx + dx[k];
+      int nbr_y = cy + dy[k];
+      if (nbr_y < 0 || nbr_y >= ny) {
+        continue;
+      }
+      if (is_global) {
+        nbr_x = (nbr_x + nx) % nx;
+      } else if (nbr_x < 0 || nbr_x >= nx) {
+        continue;
+      }
+      int nbr_idx = nbr_y * nx + nbr_x;
+      if (isWetPoint(land_sea_map[nbr_idx]) &&
+          partition_map[nbr_idx] == largest_with_nbrs && !visited[nbr_idx]) {
+        visited[nbr_idx] = true;
+        queue.push_back(nbr_idx);
+      }
+    }
+  }
+
+  if (transferred_cells.empty()) {
+    return false;
+  }
+
+  for (int idx : transferred_cells) {
+    partition_map[idx] = smallest_p;
+  }
+
+  resortDomainsBySize(nx, ny, land_sea_map, num_partitions, partition_map,
+                      is_global, partition_counts, partition_neighbors);
+  return true;
+}
+
+// --- splitAndMergeLargestIsolatedDomain -------------------------------------
+/**
+ * @brief Splits an isolated largest domain into two near-equal parts and merges
+ * the smallest adjacent pair of domains that have additional neighbors.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param[in,out] partition_map Partition IDs vector to update.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @param[in,out] partition_counts Vector of wet cell counts per partition.
+ * @param[in,out] partition_neighbors Vector of neighbor sets per partition.
+ * @return True if split and merge occurred; false otherwise.
+ */
+bool splitAndMergeLargestIsolatedDomain(
+    int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
+    std::vector<int> &partition_map, bool is_global,
+    std::vector<int> &partition_counts,
+    std::vector<std::set<int>> &partition_neighbors) {
+  if (num_partitions <= 1) {
+    return false;
+  }
+
+  int largest_p = 1;
+  if (!partition_neighbors[largest_p].empty()) {
+    return false;
+  }
+
+  // Find candidate adjacent pair with smallest combined count and additional
+  // neighbors
+  int best_q1 = -1;
+  int best_q2 = -1;
+  int min_pair_sum = -1;
+
+  for (int q1 = 1; q1 <= num_partitions; ++q1) {
+    if (q1 == largest_p || partition_counts[q1] == 0) {
+      continue;
+    }
+    for (int q2 : partition_neighbors[q1]) {
+      if (q2 <= q1 || q2 == largest_p || partition_counts[q2] == 0) {
+        continue;
+      }
+
+      auto is_external_nbr = [q1, q2, largest_p](int nbr) {
+        return nbr != q1 && nbr != q2 && nbr != largest_p;
+      };
+
+      bool has_external_neighbor =
+          std::any_of(partition_neighbors[q1].begin(),
+                      partition_neighbors[q1].end(), is_external_nbr) ||
+          std::any_of(partition_neighbors[q2].begin(),
+                      partition_neighbors[q2].end(), is_external_nbr);
+
+      if (!has_external_neighbor) {
+        continue;
+      }
+
+      int pair_sum = partition_counts[q1] + partition_counts[q2];
+      if (min_pair_sum == -1 || pair_sum < min_pair_sum) {
+        min_pair_sum = pair_sum;
+        best_q1 = q1;
+        best_q2 = q2;
+      }
+    }
+  }
+
+  if (best_q1 == -1 || best_q2 == -1) {
+    return false;
+  }
+
+  int q_keep = best_q1;
+  int q_released = best_q2;
+
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (isWetPoint(land_sea_map[i]) && partition_map[i] == q_released) {
+      partition_map[i] = q_keep;
+    }
+  }
+
+  int x_min = nx, x_max = -1, y_min = ny, y_max = -1;
+  for (int y = 0; y < ny; ++y) {
+    for (int x = 0; x < nx; ++x) {
+      int idx = y * nx + x;
+      if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == largest_p) {
+        x_min = std::min(x_min, x);
+        x_max = std::max(x_max, x);
+        y_min = std::min(y_min, y);
+        y_max = std::max(y_max, y);
+      }
+    }
+  }
+
+  int isolated_sea = partition_counts[largest_p];
+  int target_half = isolated_sea / 2;
+
+  bool split_x = (x_max - x_min >= y_max - y_min);
+
+  if (split_x && x_max > x_min) {
+    int current_sea = 0;
+    int best_x = x_min;
+    int best_diff = isolated_sea + 1;
+
+    for (int x = x_min; x < x_max; ++x) {
+      int sea_in_col = 0;
+      for (int y = y_min; y <= y_max; ++y) {
+        int idx = y * nx + x;
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == largest_p) {
+          sea_in_col++;
+        }
+      }
+      current_sea += sea_in_col;
+      int diff = std::abs(current_sea - target_half);
+      if (diff < best_diff) {
+        best_diff = diff;
+        best_x = x;
+      }
+    }
+
+    for (int y = y_min; y <= y_max; ++y) {
+      for (int x = best_x + 1; x <= x_max; ++x) {
+        int idx = y * nx + x;
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == largest_p) {
+          partition_map[idx] = q_released;
+        }
+      }
+    }
+  } else if (y_max > y_min) {
+    int current_sea = 0;
+    int best_y = y_min;
+    int best_diff = isolated_sea + 1;
+
+    for (int y = y_min; y < y_max; ++y) {
+      int sea_in_row = 0;
+      for (int x = x_min; x <= x_max; ++x) {
+        int idx = y * nx + x;
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == largest_p) {
+          sea_in_row++;
+        }
+      }
+      current_sea += sea_in_row;
+      int diff = std::abs(current_sea - target_half);
+      if (diff < best_diff) {
+        best_diff = diff;
+        best_y = y;
+      }
+    }
+
+    for (int y = best_y + 1; y <= y_max; ++y) {
+      for (int x = x_min; x <= x_max; ++x) {
+        int idx = y * nx + x;
+        if (isWetPoint(land_sea_map[idx]) && partition_map[idx] == largest_p) {
+          partition_map[idx] = q_released;
+        }
+      }
+    }
+  }
+
+  resortDomainsBySize(nx, ny, land_sea_map, num_partitions, partition_map,
+                      is_global, partition_counts, partition_neighbors);
+  return true;
+}
+
+// --- exchangeRankedBoundaries -----------------------------------------------
+/**
+ * @brief Exchanges full boundary data between adjacent size-ranked domains.
+ * @details Evaluates boundary cell transfers between ranked domain pairs
+ * (1st-2nd, 2nd-3rd, ..., down to smallest two). The exchange is rejected if
+ * the domain furthest from target size becomes even further away in absolute
+ * value.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param num_partitions Total number of partitions.
+ * @param[in,out] partition_map Partition assignments vector.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @param[in,out] partition_counts Vector of wet cell counts per partition.
+ * @param target_size Target domain size (ceil(total_wet / num_partitions)).
+ * @return Total number of boundary cells swapped.
+ */
+int exchangeRankedBoundaries(int nx, int ny, std::span<const int> land_sea_map,
+                             int num_partitions,
+                             std::vector<int> &partition_map, bool is_global,
+                             std::vector<int> &partition_counts,
+                             int target_size) {
+  const int dx[] = {0, 0, -1, 1};
+  const int dy[] = {-1, 1, 0, 0};
+
+  int total_swaps = 0;
+
+  for (int i = 1; i < num_partitions; ++i) {
+    int p1 = i;
+    int p2 = i + 1;
+
+    // Determine direction of transfer: from larger domain to smaller domain
+    int src_p = (partition_counts[p1] >= partition_counts[p2]) ? p1 : p2;
+    int dst_p = (src_p == p1) ? p2 : p1;
+
+    if (partition_counts[src_p] <= partition_counts[dst_p]) {
+      continue;
+    }
+
+    std::vector<int> boundary_cells;
+    for (int y = 0; y < ny; ++y) {
+      for (int x = 0; x < nx; ++x) {
+        int idx = y * nx + x;
+        if (!isWetPoint(land_sea_map[idx]) || partition_map[idx] != src_p) {
+          continue;
+        }
+
+        bool adj_to_dst = false;
+        for (int k = 0; k < 4; ++k) {
+          int nbr_x = x + dx[k];
+          int nbr_y = y + dy[k];
+          if (nbr_y < 0 || nbr_y >= ny) {
+            continue;
+          }
+          if (is_global) {
+            nbr_x = (nbr_x + nx) % nx;
+          } else if (nbr_x < 0 || nbr_x >= nx) {
+            continue;
+          }
+          int nbr_idx = nbr_y * nx + nbr_x;
+          if (isWetPoint(land_sea_map[nbr_idx]) &&
+              partition_map[nbr_idx] == dst_p) {
+            adj_to_dst = true;
+            break;
+          }
+        }
+
+        if (adj_to_dst) {
+          boundary_cells.push_back(idx);
+        }
+      }
+    }
+
+    int S = static_cast<int>(boundary_cells.size());
+    if (S == 0 || partition_counts[src_p] <= S) {
+      continue;
+    }
+
+    int dev_before = std::max(std::abs(partition_counts[src_p] - target_size),
+                              std::abs(partition_counts[dst_p] - target_size));
+
+    int new_src_count = partition_counts[src_p] - S;
+    int new_dst_count = partition_counts[dst_p] + S;
+    int dev_after = std::max(std::abs(new_src_count - target_size),
+                             std::abs(new_dst_count - target_size));
+
+    if (dev_after <= dev_before) {
+      for (int idx : boundary_cells) {
+        partition_map[idx] = dst_p;
+      }
+      partition_counts[src_p] = new_src_count;
+      partition_counts[dst_p] = new_dst_count;
+      total_swaps += S;
+    }
+  }
+
+  return total_swaps;
+}
+
 // --- cleanSingleProtrudingPoints --------------------------------------------
 /**
  * @brief Checks outer boundaries of partitions for narrow 1-point or 2-point
@@ -400,11 +957,10 @@ int reassignDisconnectedPieces(int nx, int ny,
  * @param is_global Flag indicating 360-degree longitudinal grid closure.
  * @return Total number of protruding points reassigned.
  */
-int cleanSingleProtrudingPoints(int nx, int ny,
-                                std::span<const int> land_sea_map,
-                                int num_partitions,
-                                std::vector<int> &partition_map,
-                                bool is_global = false) {
+[[maybe_unused]] int
+cleanSingleProtrudingPoints(int nx, int ny, std::span<const int> land_sea_map,
+                            int num_partitions, std::vector<int> &partition_map,
+                            bool is_global = false) {
   if (num_partitions <= 1 || nx <= 0 || ny <= 0) {
     return 0;
   }
@@ -669,7 +1225,7 @@ int cleanSingleProtrudingPoints(int nx, int ny,
  * @param record_hook Callback invoked whenever intermediate maps are updated.
  * @return Number of actual iteration passes executed until convergence or cap.
  */
-int refinePartitionsIteratively(
+[[maybe_unused]] int refinePartitionsIteratively(
     int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
     int max_iterations, std::vector<int> &partition_map, bool is_global = false,
     const std::function<void()> &record_hook = nullptr) {
@@ -995,10 +1551,11 @@ int refinePartitionsIteratively(
  * @param is_global Flag indicating 360-degree longitudinal grid closure.
  * @return True if an isolated partition was split; false otherwise.
  */
-bool splitIsolatedPartitions(int nx, int ny, std::span<const int> land_sea_map,
-                             int num_partitions,
-                             std::vector<int> &partition_map,
-                             bool is_global = false) {
+[[maybe_unused]] bool splitIsolatedPartitions(int nx, int ny,
+                                              std::span<const int> land_sea_map,
+                                              int num_partitions,
+                                              std::vector<int> &partition_map,
+                                              bool is_global = false) {
   if (num_partitions <= 1 || nx <= 0 || ny <= 0) {
     return false;
   }
@@ -1244,56 +1801,107 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
     }
   };
 
+  // Initial domain decomposition: Recursive Orthogonal Bisection
   recursiveBisectDomain(0, nx - 1, 0, ny - 1, nx, land_sea_map, num_partitions,
                         1, partition_map);
-  // Record initial bisection map
   record_map();
 
-  if (num_partitions > 1) {
-    if (max_iterations > 0) {
-      int iters_run = refinePartitionsIteratively(
-          nx, ny, land_sea_map, num_partitions, max_iterations, partition_map,
-          is_global, record_map);
-      if (actual_iterations) {
-        *actual_iterations = iters_run;
+  // Count total wet points and compute target domain size
+  int total_wet = 0;
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (isWetPoint(land_sea_map[i]) && partition_map[i] > 0) {
+      total_wet++;
+    }
+  }
+
+  if (total_wet == 0) {
+    return partition_map;
+  }
+
+  int target_size = (total_wet + num_partitions - 1) / num_partitions;
+
+  std::vector<int> partition_counts(num_partitions + 1, 0);
+  std::vector<std::set<int>> partition_neighbors(num_partitions + 1);
+
+  // Post-bisection initialization: sort domains by size, determine neighbors,
+  // output diagnostics
+  resortDomainsBySize(nx, ny, land_sea_map, num_partitions, partition_map,
+                      is_global, partition_counts, partition_neighbors);
+  record_map();
+
+  int min_points = partition_counts[num_partitions];
+  int max_points = partition_counts[1];
+  double largest_pct = (static_cast<double>(max_points) / target_size) * 100.0;
+  printDomainStats(min_points, max_points, largest_pct, target_size);
+
+  // Single integrated refinement loop
+  if (num_partitions > 1 && max_iterations > 0) {
+    int iters_run = 0;
+    for (int iter = 0; iter < max_iterations; ++iter) {
+      iters_run++;
+      std::vector<int> map_at_start = partition_map;
+
+      // Step 1: Check if smallest domain has neighbors. If not & size < 70%
+      // target, split off coherent part of largest domain with neighbors.
+      if (rebalanceIsolatedSmallestDomain(
+              nx, ny, land_sea_map, num_partitions, partition_map, is_global,
+              partition_counts, partition_neighbors, target_size)) {
+        record_map();
       }
-    }
 
-    int reassigned = reassignDisconnectedPieces(
-        nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-    if (reassigned > 0) {
-      record_map();
-    }
+      // Step 2: Check if largest domain has neighbors. If not, split in two and
+      // merge smallest adjacent pair with additional neighbors.
+      if (splitAndMergeLargestIsolatedDomain(
+              nx, ny, land_sea_map, num_partitions, partition_map, is_global,
+              partition_counts, partition_neighbors)) {
+        record_map();
+      }
 
-    // Clean protruding points on final partition map
-    int cleaned = cleanSingleProtrudingPoints(
-        nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-    if (cleaned > 0) {
-      record_map();
-    }
+      // Step 3: Sequential full boundary exchanges between adjacent ranked
+      // domains (1st-2nd, 2nd-3rd, ..., down to smallest two)
+      int boundary_swaps = exchangeRankedBoundaries(
+          nx, ny, land_sea_map, num_partitions, partition_map, is_global,
+          partition_counts, target_size);
+      if (boundary_swaps > 0) {
+        record_map();
+      }
 
-    for (int split_pass = 0; split_pass < num_partitions; ++split_pass) {
-      bool split_done = splitIsolatedPartitions(
+      // Step 4: Deal with disconnected pieces as in the present approach
+      int reassigned = reassignDisconnectedPieces(
           nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-      if (!split_done) {
+      if (reassigned > 0) {
+        record_map();
+      }
+
+      // Step 5: Deal with small grid extensions (placeholder for now)
+      dealWithSmallGridExtensions(nx, ny, land_sea_map, num_partitions,
+                                  partition_map, is_global);
+
+      // Step 6: Resort the domains and re-establish neighbor information. Write
+      // out test info.
+      resortDomainsBySize(nx, ny, land_sea_map, num_partitions, partition_map,
+                          is_global, partition_counts, partition_neighbors);
+
+      min_points = partition_counts[num_partitions];
+      max_points = partition_counts[1];
+      largest_pct = (static_cast<double>(max_points) / target_size) * 100.0;
+      printDomainStats(min_points, max_points, largest_pct, target_size);
+
+      record_map();
+
+      // Step 7: Determine if convergence is reached (< 15% larger than target,
+      // or no domains changed)
+      bool no_domains_changed = (partition_map == map_at_start);
+      bool load_balanced = (static_cast<double>(max_points) <
+                            1.15 * static_cast<double>(target_size));
+
+      if (load_balanced || no_domains_changed) {
         break;
       }
-      record_map();
-      if (max_iterations > 0) {
-        refinePartitionsIteratively(nx, ny, land_sea_map, num_partitions,
-                                    max_iterations, partition_map, is_global,
-                                    record_map);
-      }
-      int reassigned_after_split = reassignDisconnectedPieces(
-          nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-      if (reassigned_after_split > 0) {
-        record_map();
-      }
-      int cleaned_after_split = cleanSingleProtrudingPoints(
-          nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-      if (cleaned_after_split > 0) {
-        record_map();
-      }
+    }
+
+    if (actual_iterations) {
+      *actual_iterations = iters_run;
     }
   }
 
