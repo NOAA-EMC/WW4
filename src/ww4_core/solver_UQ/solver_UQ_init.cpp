@@ -334,6 +334,47 @@ void solver_UQ_init(std::ostream &os) {
           }
         }
       }
+
+      // Compute final domain sizes (active wet points per partition) and output
+      // histogram only when a new partition map is generated
+      if (getRunConfig().numRanksCompute > 0) {
+        int totalActiveWetPoints = 0;
+        std::vector<int> domainSizes(getRunConfig().numRanksCompute + 1, 0);
+        for (size_t i = 0; i < partitionMap.size(); ++i) {
+          int pid = partitionMap[i];
+          if (pid >= 1 && pid <= getRunConfig().numRanksCompute &&
+              (fullGrid.landMask[i] == 1 || fullGrid.landMask[i] == 2)) {
+            domainSizes[pid]++;
+            totalActiveWetPoints++;
+          }
+        }
+
+        // Sort domain sizes and group per size in histogram format
+        std::map<int, int> sizeHistogram;
+        for (int p = 1; p <= getRunConfig().numRanksCompute; ++p) {
+          sizeHistogram[domainSizes[p]]++;
+        }
+
+        double meanSize = static_cast<double>(totalActiveWetPoints) /
+                          static_cast<double>(getRunConfig().numRanksCompute);
+
+        auto printHistogram = [&](std::ostream &out) {
+          out << "     Final domain sizes (mean: " << std::fixed
+              << std::setprecision(1) << meanSize << "):" << std::endl;
+          for (const auto &[sz, count] : sizeHistogram) {
+            out << "        " << std::setw(6) << sz
+                << " points : " << std::string(count, '*') << " (" << count
+                << ")" << std::endl;
+          }
+        };
+
+        if (getRunConfig().produceStdOut) {
+          printHistogram(os);
+        }
+        if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+          printHistogram(getLogFileStream());
+        }
+      }
     } else if (ncid >= 0) {
       static_cast<void>(ww4::io::closeUQpartitionMapFile(ncid));
     }
@@ -341,41 +382,6 @@ void solver_UQ_init(std::ostream &os) {
     // Populate partition map from successfully read file
     partitionMap.assign(partData.partition_map.begin(),
                         partData.partition_map.end());
-  }
-
-  // Compute final domain sizes (sea points per partition) and output histogram
-  if (!partitionMap.empty() && getRunConfig().numRanksCompute > 0) {
-    std::vector<int> domainSizes(getRunConfig().numRanksCompute + 1, 0);
-    for (size_t i = 0; i < partitionMap.size(); ++i) {
-      int pid = partitionMap[i];
-      if (pid >= 1 && pid <= getRunConfig().numRanksCompute &&
-          (fullGrid.landMask.empty() || fullGrid.landMask[i] == 1 ||
-           fullGrid.landMask[i] == 2)) {
-        domainSizes[pid]++;
-      }
-    }
-
-    // Sort domain sizes and group per size in histogram format
-    std::map<int, int> sizeHistogram;
-    for (int p = 1; p <= getRunConfig().numRanksCompute; ++p) {
-      sizeHistogram[domainSizes[p]]++;
-    }
-
-    auto printHistogram = [&](std::ostream &out) {
-      out << "     Final domain sizes:" << std::endl;
-      for (const auto &[sz, count] : sizeHistogram) {
-        out << "        " << std::setw(6) << sz
-            << " points : " << std::string(count, '*') << " (" << count << ")"
-            << std::endl;
-      }
-    };
-
-    if (getRunConfig().produceStdOut) {
-      printHistogram(os);
-    }
-    if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
-      printHistogram(getLogFileStream());
-    }
   }
 
   // Suppress unused variable warning pending sub-domain extraction integration

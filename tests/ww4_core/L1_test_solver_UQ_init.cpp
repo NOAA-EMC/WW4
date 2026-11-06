@@ -418,8 +418,15 @@ TEST(SolverUQInitTest, OutputHistogramFinalDomainSizes) {
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
-  EXPECT_NE(output.find("Final domain sizes:"), std::string::npos);
+  EXPECT_NE(output.find("Final domain sizes (mean:"), std::string::npos);
   EXPECT_NE(output.find("points :"), std::string::npos);
+
+  // Now test that reading an existing partition file does NOT output histogram
+  ss.str("");
+  ss.clear();
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string existingOutput = ss.str();
+  EXPECT_EQ(existingOutput.find("Final domain sizes"), std::string::npos);
 
   std::remove("my_uq_grid_hist.nc");
   std::remove("my_uq_grid_hist.partitions.nc");
