@@ -40,7 +40,7 @@ NWS often uses Generative AI (GenAI) for code development and refactoring. Whene
 @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 @author Contributors: Jules (Agentic AI)
 @date Initial, 2026-11-04
-@date Last update : 2026-11-05
+@date Last update : 2026-11-06
 """
 
 from __future__ import annotations
@@ -140,11 +140,12 @@ def read_partition_file(filepath: Path):
     Returns
     -------
     tuple
-        (maps, num_partitions, grid_title, grid_mask)
+        (maps, num_partitions, grid_title, grid_mask, is_global)
         maps: np.ndarray with shape (n_maps, ny, nx)
         num_partitions: int
         grid_title: str
         grid_mask: np.ndarray | None
+        is_global: bool
     """
     if not filepath.exists():
         raise FileNotFoundError(f"Partition file not found: {filepath}")
@@ -152,6 +153,8 @@ def read_partition_file(filepath: Path):
     with nc.Dataset(str(filepath), "r") as ds:
         num_partitions = getattr(ds, "num_partitions", 0)
         grid_title = getattr(ds, "title", filepath.name)
+        closure_att = str(getattr(ds, "global_closure", "")).lower()
+        is_global = closure_att in ["closed", "true", "yes", "1"]
 
         if "partition_map" not in ds.variables:
             raise KeyError("Variable 'partition_map' not found in NetCDF file.")
@@ -178,11 +181,21 @@ def read_partition_file(filepath: Path):
         assoc_grid = find_associated_grid_file(filepath)
         if assoc_grid is not None:
             grid_mask = read_grid_mask(assoc_grid)
+            if not is_global:
+                try:
+                    with nc.Dataset(str(assoc_grid), "r") as ds_g:
+                        closure_g = str(getattr(ds_g, "global_closure", "")).lower()
+                        if closure_g in ["closed", "true", "yes", "1"]:
+                            is_global = True
+                except (OSError, KeyError, ValueError):
+                    pass
 
-    return maps, num_partitions, grid_title, grid_mask
+    return maps, num_partitions, grid_title, grid_mask, is_global
 
 
-def build_partition_adjacency_graph(maps: np.ndarray) -> dict[int, set[int]]:
+def build_partition_adjacency_graph(
+    maps: np.ndarray, is_global: bool = False
+) -> dict[int, set[int]]:
     """
     Build an adjacency graph of partition IDs across maps using 4-connectivity.
     """
@@ -202,6 +215,16 @@ def build_partition_adjacency_graph(maps: np.ndarray) -> dict[int, set[int]]:
             if u > 0 and v > 0 and u != v:
                 adj[int(u)].add(int(v))
                 adj[int(v)].add(int(u))
+
+        # Check global closure boundary (between last and first column)
+        if is_global and slice_data.shape[1] > 1:
+            diff_wrap = slice_data[:, -1] != slice_data[:, 0]
+            p1_w = slice_data[:, -1][diff_wrap]
+            p2_w = slice_data[:, 0][diff_wrap]
+            for u, v in zip(p1_w, p2_w):
+                if u > 0 and v > 0 and u != v:
+                    adj[int(u)].add(int(v))
+                    adj[int(v)].add(int(u))
 
         # Vertical neighbors
         diff_v = slice_data[:-1, :] != slice_data[1:, :]
@@ -521,7 +544,9 @@ def main():
     input_path = Path(args.partition_file)
 
     try:
-        maps, num_partitions, grid_title, grid_mask = read_partition_file(input_path)
+        maps, num_partitions, grid_title, grid_mask, is_global = read_partition_file(
+            input_path
+        )
     except (OSError, KeyError, ValueError) as e:
         print(f"Error reading partition file: {e}")
         sys.exit(1)
@@ -561,7 +586,7 @@ def main():
 
         indices = sample_indices(total_maps, args.step)
         # Build adjacency graph and minimal graph coloring across sampled animation frames
-        adj = build_partition_adjacency_graph(maps[indices])
+        adj = build_partition_adjacency_graph(maps[indices], is_global=is_global)
         color_map = compute_minimal_partition_coloring(adj, max_colors=max_colors)
 
         create_animation(
@@ -578,7 +603,9 @@ def main():
         # Plot the entire map array for the final map iteration
         last_idx = total_maps - 1
         # Build adjacency graph and minimal coloring strictly for the final map being displayed
-        adj = build_partition_adjacency_graph(maps[last_idx : last_idx + 1])
+        adj = build_partition_adjacency_graph(
+            maps[last_idx : last_idx + 1], is_global=is_global
+        )
         color_map = compute_minimal_partition_coloring(adj, max_colors=max_colors)
 
         plot_single_map(

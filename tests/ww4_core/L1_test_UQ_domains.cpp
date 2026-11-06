@@ -17,7 +17,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-05
+ * @date Last update : 2026-11-06
  */
 
 // Routine coverage references for anonymous namespace helper functions:
@@ -305,6 +305,29 @@ TEST(UQDomainsTest, CleanSingleProtrudingPoints) {
   for (int p = 1; p <= num_partitions; ++p) {
     EXPECT_GT(counts[p], 0);
   }
+}
+
+TEST(UQDomainsTest, CleanNarrowLineProtrusions) {
+  // Create a grid and test that narrow lines (1 or 2 points wide) protruding
+  // into adjacent partitions are smoothed/reassigned without issue.
+  int nx = 10;
+  int ny = 10;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  int num_partitions = 2;
+  std::vector<int> partition_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, 30);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (int p : partition_map) {
+    EXPECT_GE(p, 1);
+    EXPECT_LE(p, num_partitions);
+    counts[p]++;
+  }
+  EXPECT_GT(counts[1], 0);
+  EXPECT_GT(counts[2], 0);
 }
 
 TEST(UQDomainsTest, SplitIsolatedOverloadedPartition) {

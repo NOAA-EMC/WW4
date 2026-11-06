@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-05
+ * @date Last update : 2026-11-06
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -403,6 +403,33 @@ TEST(SolverUQInitTest, IntermediateMapsWritesMultipleMaps) {
 
   std::remove("my_uq_grid_interm.nc");
   std::remove("my_uq_grid_interm.partitions.nc");
+  resetInternalState();
+}
+
+TEST(SolverUQInitTest, OutputHistogramFinalDomainSizes) {
+  resetInternalState();
+  std::ostringstream ss;
+  getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "my_uq_grid_hist.nc";
+  getMutableRunConfig().numRanksCompute = 2;
+  getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
+
+  ww4::test_helpers::createMinimalUgridFile("my_uq_grid_hist.nc", 8, 8);
+
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string output = ss.str();
+  EXPECT_NE(output.find("Final domain sizes (mean:"), std::string::npos);
+  EXPECT_NE(output.find("points :"), std::string::npos);
+
+  // Now test that reading an existing partition file does NOT output histogram
+  ss.str("");
+  ss.clear();
+  EXPECT_NO_THROW(solver_UQ_init(ss));
+  std::string existingOutput = ss.str();
+  EXPECT_EQ(existingOutput.find("Final domain sizes"), std::string::npos);
+
+  std::remove("my_uq_grid_hist.nc");
+  std::remove("my_uq_grid_hist.partitions.nc");
   resetInternalState();
 }
 

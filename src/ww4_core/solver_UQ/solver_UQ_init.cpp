@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-05
+ * @date Last update : 2026-11-06
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -30,8 +30,11 @@
 #include "ww4_utils/ww4_logfile.h"
 #include "ww4_utils/ww4_run_config.h"
 #include "ww4_utils/ww4_std_out.h"
+#include <algorithm>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
+#include <map>
 
 namespace ww4_core {
 
@@ -329,6 +332,47 @@ void solver_UQ_init(std::ostream &os) {
           if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
             getLogFileStream() << "     " << writeMsg << std::endl;
           }
+        }
+      }
+
+      // Compute final domain sizes (active wet points per partition) and output
+      // histogram only when a new partition map is generated
+      if (getRunConfig().numRanksCompute > 0) {
+        int totalActiveWetPoints = 0;
+        std::vector<int> domainSizes(getRunConfig().numRanksCompute + 1, 0);
+        for (size_t i = 0; i < partitionMap.size(); ++i) {
+          int pid = partitionMap[i];
+          if (pid >= 1 && pid <= getRunConfig().numRanksCompute &&
+              (fullGrid.landMask[i] == 1 || fullGrid.landMask[i] == 2)) {
+            domainSizes[pid]++;
+            totalActiveWetPoints++;
+          }
+        }
+
+        // Sort domain sizes and group per size in histogram format
+        std::map<int, int> sizeHistogram;
+        for (int p = 1; p <= getRunConfig().numRanksCompute; ++p) {
+          sizeHistogram[domainSizes[p]]++;
+        }
+
+        double meanSize = static_cast<double>(totalActiveWetPoints) /
+                          static_cast<double>(getRunConfig().numRanksCompute);
+
+        auto printHistogram = [&](std::ostream &out) {
+          out << "     Final domain sizes (mean: " << std::fixed
+              << std::setprecision(1) << meanSize << "):" << std::endl;
+          for (const auto &[sz, count] : sizeHistogram) {
+            out << "        " << std::setw(6) << sz
+                << " points : " << std::string(count, '*') << " (" << count
+                << ")" << std::endl;
+          }
+        };
+
+        if (getRunConfig().produceStdOut) {
+          printHistogram(os);
+        }
+        if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
+          printHistogram(getLogFileStream());
         }
       }
     } else if (ncid >= 0) {

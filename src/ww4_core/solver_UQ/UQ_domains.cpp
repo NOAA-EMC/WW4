@@ -20,7 +20,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-05
+ * @date Last update : 2026-11-06
  */
 
 #include "ww4_core/solver_UQ/UQ_domains.h"
@@ -384,13 +384,13 @@ int reassignDisconnectedPieces(int nx, int ny,
 
 // --- cleanSingleProtrudingPoints --------------------------------------------
 /**
- * @brief Checks outer boundaries of partitions for single protruding points
- * and returns such points to the adjacent grid if possible.
- * @details A single protruding point is defined as an active wet cell belonging
- * to partition p that has at most 1 orthogonal neighbor in partition p (or is
- * isolated from its partition bulk along that edge) and is adjacent to another
- * partition. Returning such points to an adjacent partition smooths jagged
- * outer boundaries without increasing partition imbalance when feasible.
+ * @brief Checks outer boundaries of partitions for narrow 1-point or 2-point
+ * wide lines of grid points jutting out from partition bodies and reassigns
+ * them to adjacent partitions if possible.
+ * @details Detects narrow 1-point or 2-point wide peninsulas / lines jutting
+ * out from the body of a partition into adjacent partitions. Reassigning such
+ * points to adjacent partitions smooths boundaries and prevents jagged lines
+ * without increasing partition imbalance when feasible.
  *
  * @param nx Number of longitudinal grid columns.
  * @param ny Number of latitudinal grid rows.
@@ -427,6 +427,7 @@ int cleanSingleProtrudingPoints(int nx, int ny,
   for (int pass = 0; pass < max_passes; ++pass) {
     int cleaned_in_pass = 0;
 
+    // Check 1: single protruding points
     for (int y = 0; y < ny; ++y) {
       for (int x = 0; x < nx; ++x) {
         int idx = y * nx + x;
@@ -517,6 +518,120 @@ int cleanSingleProtrudingPoints(int nx, int ny,
               partition_counts[best_p2]++;
               cleaned_in_pass++;
               total_cleaned++;
+            }
+          }
+        }
+      }
+    }
+
+    // Check 2: 2-point wide narrow lines protruding into an adjacent partition
+    for (int y = 0; y < ny; ++y) {
+      for (int x = 0; x < nx; ++x) {
+        int idx1 = y * nx + x;
+        if (!isWetPoint(land_sea_map[idx1])) {
+          continue;
+        }
+        int p1 = partition_map[idx1];
+        if (p1 < 1 || p1 > num_partitions || partition_counts[p1] <= 2) {
+          continue;
+        }
+
+        // Check horizontal or vertical pair (x, y) and its north or east
+        // neighbor
+        for (int pair_dir = 1; pair_dir <= 3; pair_dir += 2) {
+          int x2 = x + dx[pair_dir];
+          int y2 = y + dy[pair_dir];
+          if (y2 < 0 || y2 >= ny) {
+            continue;
+          }
+          if (is_global) {
+            x2 = (x2 + nx) % nx;
+          } else if (x2 < 0 || x2 >= nx) {
+            continue;
+          }
+          int idx2 = y2 * nx + x2;
+          if (!isWetPoint(land_sea_map[idx2]) || partition_map[idx2] != p1) {
+            continue;
+          }
+
+          int nbrs_p1_cell = 0;
+          int cand_p_pair[6] = {0, 0, 0, 0, 0, 0};
+          int cand_c_pair[6] = {0, 0, 0, 0, 0, 0};
+          int num_cands_pair = 0;
+
+          auto add_nbrs = [&](int cx, int cy, int other_idx) {
+            for (int k = 0; k < 4; ++k) {
+              int nx_nbr = cx + dx[k];
+              int ny_nbr = cy + dy[k];
+              if (ny_nbr < 0 || ny_nbr >= ny) {
+                continue;
+              }
+              if (is_global) {
+                nx_nbr = (nx_nbr + nx) % nx;
+              } else if (nx_nbr < 0 || nx_nbr >= nx) {
+                continue;
+              }
+              int nidx = ny_nbr * nx + nx_nbr;
+              if (nidx == other_idx || !isWetPoint(land_sea_map[nidx])) {
+                continue;
+              }
+              int p_nbr = partition_map[nidx];
+              if (p_nbr == p1) {
+                nbrs_p1_cell++;
+              } else if (p_nbr >= 1 && p_nbr <= num_partitions) {
+                bool found = false;
+                for (int c = 0; c < num_cands_pair; ++c) {
+                  if (cand_p_pair[c] == p_nbr) {
+                    cand_c_pair[c]++;
+                    found = true;
+                    break;
+                  }
+                }
+                if (!found && num_cands_pair < 6) {
+                  cand_p_pair[num_cands_pair] = p_nbr;
+                  cand_c_pair[num_cands_pair] = 1;
+                  num_cands_pair++;
+                }
+              }
+            }
+          };
+
+          nbrs_p1_cell = 0;
+          add_nbrs(x, y, idx2);
+          int p1_ext_1 = nbrs_p1_cell;
+
+          nbrs_p1_cell = 0;
+          add_nbrs(x2, y2, idx1);
+          int p1_ext_2 = nbrs_p1_cell;
+
+          if (p1_ext_1 + p1_ext_2 <= 1 && num_cands_pair > 0) {
+            int best_p2 = -1;
+            int max_c = 0;
+            for (int c = 0; c < num_cands_pair; ++c) {
+              if (cand_c_pair[c] > max_c) {
+                max_c = cand_c_pair[c];
+                best_p2 = cand_p_pair[c];
+              } else if (cand_c_pair[c] == max_c && best_p2 != -1) {
+                if (partition_counts[cand_p_pair[c]] <
+                    partition_counts[best_p2]) {
+                  best_p2 = cand_p_pair[c];
+                }
+              }
+            }
+
+            if (best_p2 != -1 && max_c >= 3) {
+              int diff_before =
+                  std::abs(partition_counts[p1] - partition_counts[best_p2]);
+              int diff_after = std::abs((partition_counts[p1] - 2) -
+                                        (partition_counts[best_p2] + 2));
+              if (diff_after <= diff_before) {
+                partition_map[idx1] = best_p2;
+                partition_map[idx2] = best_p2;
+                partition_counts[p1] -= 2;
+                partition_counts[best_p2] += 2;
+                cleaned_in_pass += 2;
+                total_cleaned += 2;
+              }
             }
           }
         }
@@ -675,9 +790,12 @@ int refinePartitionsIteratively(
         if (best_dir == 0 || best_dir == 1) {
           // Horizontal interface: inspect adjacent wet points along row y
           // Check if adjacent boundary points along row are wet
-          bool left_wet = (x > 0) && isWetPoint(land_sea_map[y * nx + (x - 1)]);
+          int left_x = is_global ? ((x - 1 + nx) % nx) : (x - 1);
+          int right_x = is_global ? ((x + 1) % nx) : (x + 1);
+          bool left_wet =
+              (left_x >= 0) && isWetPoint(land_sea_map[y * nx + left_x]);
           bool right_wet =
-              (x < nx - 1) && isWetPoint(land_sea_map[y * nx + (x + 1)]);
+              (right_x < nx) && isWetPoint(land_sea_map[y * nx + right_x]);
 
           if (!left_wet && !right_wet) {
             // Adjacent points along the boundary row are not wet; treat as
@@ -685,39 +803,57 @@ int refinePartitionsIteratively(
             segment_indices.push_back(idx);
           } else {
             // Collect contiguous segment of adjacent wet points in this row
-            // belonging to p1 that border best_p2 in direction best_dir
-            int x_start = x;
-            while (x_start > 0) {
-              int test_idx = y * nx + (x_start - 1);
+            // belonging to p1 that border best_p2 in direction best_dir.
+            // Account for longitudinal wrapping if is_global is true.
+            int left_count = 0;
+            int cur_left = x;
+            while (left_count < nx - 1) {
+              int next_left =
+                  is_global ? ((cur_left - 1 + nx) % nx) : (cur_left - 1);
+              if (next_left < 0) {
+                break;
+              }
+              int test_idx = y * nx + next_left;
               if (!isWetPoint(land_sea_map[test_idx])) {
                 break;
               }
               if (partition_map[test_idx] != p1) {
                 break;
               }
-              if (getNeighborPartition(x_start - 1, y, best_dir) != best_p2) {
+              if (getNeighborPartition(next_left, y, best_dir) != best_p2) {
                 break;
               }
-              x_start--;
+              cur_left = next_left;
+              left_count++;
             }
 
-            int x_end = x;
-            while (x_end < nx - 1) {
-              int test_idx = y * nx + (x_end + 1);
+            int right_count = 0;
+            int cur_right = x;
+            while (left_count + right_count < nx - 1) {
+              int next_right =
+                  is_global ? ((cur_right + 1) % nx) : (cur_right + 1);
+              if (next_right >= nx) {
+                break;
+              }
+              int test_idx = y * nx + next_right;
               if (!isWetPoint(land_sea_map[test_idx])) {
                 break;
               }
               if (partition_map[test_idx] != p1) {
                 break;
               }
-              if (getNeighborPartition(x_end + 1, y, best_dir) != best_p2) {
+              if (getNeighborPartition(next_right, y, best_dir) != best_p2) {
                 break;
               }
-              x_end++;
+              cur_right = next_right;
+              right_count++;
             }
 
-            for (int col = x_start; col <= x_end; ++col) {
-              segment_indices.push_back(y * nx + col);
+            int total_seg = left_count + 1 + right_count;
+            int cur = cur_left;
+            for (int s = 0; s < total_seg; ++s) {
+              segment_indices.push_back(y * nx + cur);
+              cur = is_global ? ((cur + 1) % nx) : (cur + 1);
             }
           }
         } else {
@@ -811,28 +947,23 @@ int refinePartitionsIteratively(
       }
     }
 
+    // --- Disconnected Piece Cleanup (every iteration) -----------------------
+    int reassigned = reassignDisconnectedPieces(
+        nx, ny, land_sea_map, num_partitions, partition_map, is_global);
+    if (reassigned > 0) {
+      swaps_made += reassigned;
+      std::fill(partition_counts.begin(), partition_counts.end(), 0);
+      for (size_t i = 0; i < partition_map.size(); ++i) {
+        int pid = partition_map[i];
+        if (isWetPoint(land_sea_map[i]) && pid >= 1 && pid <= num_partitions) {
+          partition_counts[pid]++;
+        }
+      }
+    }
+
     // Record intermediate map if swaps occurred
     if (swaps_made > 0 && record_hook) {
       record_hook();
-    }
-
-    // --- Periodic Disconnected Piece Cleanup (every 5th iteration) ---------
-    if ((iter + 1) % 5 == 0) {
-      int reassigned = reassignDisconnectedPieces(
-          nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-      if (reassigned > 0) {
-        std::fill(partition_counts.begin(), partition_counts.end(), 0);
-        for (size_t i = 0; i < partition_map.size(); ++i) {
-          int pid = partition_map[i];
-          if (isWetPoint(land_sea_map[i]) && pid >= 1 &&
-              pid <= num_partitions) {
-            partition_counts[pid]++;
-          }
-        }
-        if (record_hook) {
-          record_hook();
-        }
-      }
     }
 
     // === Section: Iteration Convergence Determination =======================
