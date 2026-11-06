@@ -134,7 +134,7 @@ rm -rf exe/*
 
 WAVEWATCH IV provides developer microtools in the `tools/` directory (such as `plot_UQ_domains.py` and `ww4_test_check.py`). These Python tools require Python 3.10+ and the following packages:
 - `numpy` (array data structures and numerical operations)
-- `netCDF4` (NetCDF grid and partition dataset reader)
+- `netCDF4` (NetCDF grid and domain dataset reader)
 - `matplotlib` (graphical plotting and colormapping)
 - `pillow` / `imageio` (image processing and animated GIF generation)
 
