@@ -325,7 +325,7 @@ TEST(UQDomainsTest, SequentialRankedBoundaryExchanges) {
 
 // --- ConvergenceCriteriaEvaluation ------------------------------------------
 TEST(UQDomainsTest, ConvergenceCriteriaEvaluation) {
-  // Verify refinement terminates when largest domain is < 15% larger than
+  // Verify refinement terminates when largest domain is < 5% larger than
   // target
   const int nx = 12;
   const int ny = 12;
@@ -350,9 +350,9 @@ TEST(UQDomainsTest, ConvergenceCriteriaEvaluation) {
   int target = (total_wet + num_partitions - 1) / num_partitions;
   int max_domain = *std::max_element(counts.begin() + 1, counts.end());
 
-  // Check that the largest domain is within 15% of target or actual_iterations
+  // Check that the largest domain is within 5% of target or actual_iterations
   // is bounded
-  EXPECT_LE(max_domain, static_cast<int>(std::ceil(1.15 * target)) + 2);
+  EXPECT_LE(max_domain, static_cast<int>(std::ceil(1.05 * target)) + 2);
   EXPECT_LE(actual_iterations, 50);
 }
 

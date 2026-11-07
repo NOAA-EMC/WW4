@@ -30,6 +30,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <set>
 #include <span>
 #include <vector>
@@ -528,23 +529,188 @@ int reassignDisconnectedPieces(int nx, int ny,
 
 // --- dealWithSmallGridExtensions --------------------------------------------
 /**
- * @brief Placeholder subroutine to deal with small grid extensions.
+ * @brief Cleans small grid extensions and isolated point protrusions.
+ * @details If a point in a domain does not have points in the same domain next
+ * to it in a row/column, and one of these adjacent points is in another domain,
+ * assign the point to the other domain. If all three points in a row/column are
+ * in different domains, move the point to the domain most common in its four
+ * direct neighbors, or if that is not decisive, within the nine-point stencil.
+ * Alternates row-column processing order per iteration.
  * @param nx Number of longitudinal grid columns.
  * @param ny Number of latitudinal grid rows.
  * @param land_sea_map 2D land-sea mask span.
  * @param num_partitions Total number of partitions.
  * @param[in,out] partition_map Partition assignments vector.
  * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @param iter Current refinement loop iteration index.
  * @return Number of cell adjustments executed.
  */
-int dealWithSmallGridExtensions(
-    [[maybe_unused]] int nx, [[maybe_unused]] int ny,
-    [[maybe_unused]] std::span<const int> land_sea_map,
-    [[maybe_unused]] int num_partitions,
-    [[maybe_unused]] const std::vector<int> &partition_map,
-    [[maybe_unused]] bool is_global = false) {
-  // Placeholder for now
-  return 0;
+int dealWithSmallGridExtensions(int nx, int ny,
+                                std::span<const int> land_sea_map,
+                                int num_partitions,
+                                std::vector<int> &partition_map,
+                                bool is_global = false, int iter = 0) {
+  if (num_partitions <= 1 || nx <= 0 || ny <= 0) {
+    return 0;
+  }
+
+  int total_changes = 0;
+
+  auto get_domain = [&](int x, int y) -> int {
+    if (y < 0 || y >= ny) {
+      return 0;
+    }
+    if (is_global) {
+      x = (x % nx + nx) % nx;
+    } else if (x < 0 || x >= nx) {
+      return 0;
+    }
+    int idx = y * nx + x;
+    if (!isWetPoint(land_sea_map[idx])) {
+      return 0;
+    }
+    return partition_map[idx];
+  };
+
+  auto find_most_common_neighbor = [&](int cx, int cy) -> int {
+    std::map<int, int> counts_4;
+    const int dx4[] = {0, 0, -1, 1};
+    const int dy4[] = {-1, 1, 0, 0};
+    for (int k = 0; k < 4; ++k) {
+      int d = get_domain(cx + dx4[k], cy + dy4[k]);
+      if (d > 0 && d <= num_partitions) {
+        counts_4[d]++;
+      }
+    }
+
+    int best_d = -1;
+    int max_c = 0;
+    bool tie_4 = false;
+    for (const auto &[d, c] : counts_4) {
+      if (c > max_c) {
+        max_c = c;
+        best_d = d;
+        tie_4 = false;
+      } else if (c == max_c) {
+        tie_4 = true;
+      }
+    }
+
+    if (!tie_4 && best_d != -1) {
+      return best_d;
+    }
+
+    std::map<int, int> counts_9;
+    for (int dy = -1; dy <= 1; ++dy) {
+      for (int dx = -1; dx <= 1; ++dx) {
+        int d = get_domain(cx + dx, cy + dy);
+        if (d > 0 && d <= num_partitions) {
+          counts_9[d]++;
+        }
+      }
+    }
+
+    int best_9 = -1;
+    int max_9 = 0;
+    for (const auto &[d, c] : counts_9) {
+      if (c > max_9) {
+        max_9 = c;
+        best_9 = d;
+      }
+    }
+    return (best_9 != -1) ? best_9 : best_d;
+  };
+
+  auto row_sweep = [&]() {
+    int changes = 0;
+    for (int y = 0; y < ny; ++y) {
+      for (int x = 0; x < nx; ++x) {
+        int idx = y * nx + x;
+        if (!isWetPoint(land_sea_map[idx])) {
+          continue;
+        }
+        int p = partition_map[idx];
+        if (p < 1 || p > num_partitions) {
+          continue;
+        }
+
+        int left_x = is_global ? ((x - 1 + nx) % nx) : (x - 1);
+        int right_x = is_global ? ((x + 1) % nx) : (x + 1);
+
+        int p_left = get_domain(left_x, y);
+        int p_right = get_domain(right_x, y);
+
+        if (p_left != p && p_right != p) {
+          if (p_left > 0 && p_right > 0 && p_left != p_right) {
+            int new_d = find_most_common_neighbor(x, y);
+            if (new_d > 0 && new_d != p) {
+              partition_map[idx] = new_d;
+              changes++;
+            }
+          } else if (p_left > 0 && p_right > 0 && p_left == p_right) {
+            partition_map[idx] = p_left;
+            changes++;
+          } else if (p_left > 0 && p_right == 0) {
+            partition_map[idx] = p_left;
+            changes++;
+          } else if (p_right > 0 && p_left == 0) {
+            partition_map[idx] = p_right;
+            changes++;
+          }
+        }
+      }
+    }
+    return changes;
+  };
+
+  auto col_sweep = [&]() {
+    int changes = 0;
+    for (int y = 0; y < ny; ++y) {
+      for (int x = 0; x < nx; ++x) {
+        int idx = y * nx + x;
+        if (!isWetPoint(land_sea_map[idx])) {
+          continue;
+        }
+        int p = partition_map[idx];
+        if (p < 1 || p > num_partitions) {
+          continue;
+        }
+
+        int p_bottom = get_domain(x, y - 1);
+        int p_top = get_domain(x, y + 1);
+
+        if (p_bottom != p && p_top != p) {
+          if (p_bottom > 0 && p_top > 0 && p_bottom != p_top) {
+            int new_d = find_most_common_neighbor(x, y);
+            if (new_d > 0 && new_d != p) {
+              partition_map[idx] = new_d;
+              changes++;
+            }
+          } else if (p_bottom > 0 && p_top > 0 && p_bottom == p_top) {
+            partition_map[idx] = p_bottom;
+            changes++;
+          } else if (p_bottom > 0 && p_top == 0) {
+            partition_map[idx] = p_bottom;
+            changes++;
+          } else if (p_top > 0 && p_bottom == 0) {
+            partition_map[idx] = p_top;
+            changes++;
+          }
+        }
+      }
+    }
+    return changes;
+  };
+
+  if (iter % 2 == 0) {
+    total_changes += row_sweep();
+    total_changes += col_sweep();
+  } else {
+    total_changes += col_sweep();
+    total_changes += row_sweep();
+  }
+
+  return total_changes;
 }
 
 // --- rebalanceIsolatedSmallestDomain ----------------------------------------
@@ -2087,9 +2253,9 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
       reassignDisconnectedPieces(nx, ny, land_sea_map, num_partitions,
                                  partition_map, is_global);
 
-      // Step 5: Deal with small grid extensions (placeholder for now)
+      // Step 5: Deal with small grid extensions
       dealWithSmallGridExtensions(nx, ny, land_sea_map, num_partitions,
-                                  partition_map, is_global);
+                                  partition_map, is_global, iter);
 
       // Step 6: Resort the domains and re-establish neighbor information. Write
       // out test info.
@@ -2103,11 +2269,11 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
 
       record_map();
 
-      // Step 7: Determine if convergence is reached (< 15% larger than target,
+      // Step 7: Determine if convergence is reached (< 5% larger than target,
       // or no domains changed)
       bool no_domains_changed = (partition_map == map_at_start);
       bool load_balanced = (static_cast<double>(max_points) <
-                            1.15 * static_cast<double>(target_size));
+                            1.05 * static_cast<double>(target_size));
 
       if (load_balanced || no_domains_changed) {
         break;

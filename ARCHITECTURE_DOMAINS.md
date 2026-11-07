@@ -27,9 +27,9 @@ flowchart TD
         Step2[Step 2: Check Largest Domain Neighbors<br/>If no neighbors:<br/>Split largest domain into 2 near-equal parts<br/>Merge smallest adjacent pair with external neighbors<br/>Resort domains & adjust neighbor information]
         Step3[Step 3: Sequential Full Boundary Exchanges<br/>Pairwise: 1st-2nd, 2nd-3rd, ..., (K-1)th-Kth largest<br/>Reject swap if furthest domain from target gets further away]
         Step4[Step 4: Deal with Disconnected Pieces<br/>Identify components via 4-connectivity BFS<br/>Retain largest bulk; reassign small pieces to smallest neighbor]
-        Step5[Step 5: Deal with Small Grid Extensions<br/>Placeholder: smooth/clean narrow protruding boundary slivers]
+        Step5[Step 5: Deal with Small Grid Extensions<br/>Row/col boundary point smoothing & voting<br/>Alternating row/col order per iteration]
         Step6[Step 6: Resort Domains & Re-establish Neighbors<br/>Resort domains by size and update neighbor tables<br/>Write diagnostic test info to stdout]
-        Step7{Step 7: Convergence Check<br/>Largest domain < 15% above target OR<br/>No domains changed in current iteration?}
+        Step7{Step 7: Convergence Check<br/>Largest domain < 5% above target OR<br/>No domains changed in current iteration?}
 
         Step1 --> Step2
         Step2 --> Step3
@@ -97,11 +97,11 @@ flowchart TD
     S3Next -- Yes --> S3Loop
     S3Next -- No --> S4Disconn[Step 4: Reassign Disconnected Pieces<br/>Identify components via 4-connectivity BFS<br/>Retain primary bulk; reassign small pieces to smallest neighbor]
 
-    S4Disconn --> S5Ext[Step 5: Deal with Small Grid Extensions<br/>Placeholder: smooth/clean narrow protruding boundary slivers]
+    S4Disconn --> S5Ext[Step 5: Deal with Small Grid Extensions<br/>Row/col boundary point smoothing & voting<br/>Alternating row/col order per iteration]
 
     S5Ext --> S6Resort[Step 6: Resort Domains & Update Neighbors<br/>Resort all domains by active cell count<br/>Re-establish spatial neighbor tables<br/>Write test diagnostics to stdout]
 
-    S6Resort --> S7Conv{Step 7: Convergence Reached?<br/>- Largest domain < 15% larger than target (N_max < 1.15 * T)<br/>OR<br/>- No domain assignments changed in current iteration}
+    S6Resort --> S7Conv{Step 7: Convergence Reached?<br/>- Largest domain < 5% larger than target (N_max < 1.05 * T)<br/>OR<br/>- No domain assignments changed in current iteration}
 
     S7Conv -- Yes --> ExitLoop([Exit Refinement Loop: Converged])
     S7Conv -- No --> S8Limit{iter >= max_iterations?}
@@ -148,7 +148,10 @@ flowchart TD
   3. All smaller disconnected components are reassigned to their adjacent neighboring domain that has the smallest total active wet cell count.
 
 ### Step 5: Small Grid Extensions
-- Placeholder for detecting and smoothing small narrow grid extensions (such as 1-point or 2-point wide protruding boundary slivers) to maintain compact domain shapes.
+- Clean narrow grid extensions and single protruding points on domain boundaries:
+  1. **Row sweep**: If a point in a domain does not have points in the same domain next to it in a row, and one of these adjacent points is in another domain, assign the point to the other domain. If all three points in a row are in different domains, move the point to the domain most common in its four direct neighbors, or if that is not decisive, within the nine-point stencil directly surrounding the point.
+  2. **Column sweep**: Repeat for points adjacent in a column: if a point does not have points in the same domain next to it in a column, and one of these adjacent points is in another domain, assign the point to the other domain. If all three points in a column are in different domains, move the point to the domain most common in its four direct neighbors, or if not decisive, within the nine-point stencil surrounding the point.
+  3. **Alternation**: Alternate the row-column processing order per iteration (even iterations evaluate rows then columns; odd iterations evaluate columns then rows).
 
 ### Step 6: Domain Resorting, Neighbor Updating, and Iteration Diagnostics
 - Resort all domains in rank order based on their active wet cell count.
@@ -161,8 +164,8 @@ flowchart TD
 
 ### Step 7: Convergence Evaluation
 - Evaluate whether the iterative refinement has converged:
-  1. **Load balance criterion**: The largest domain is less than 15% larger than the target domain size:
-     $$\max_{1 \le i \le K} N_i < 1.15 \times T$$
+  1. **Load balance criterion**: The largest domain is less than 5% larger than the target domain size:
+     $$\max_{1 \le i \le K} N_i < 1.05 \times T$$
   2. **Stability criterion**: No domain cell assignments have changed in the present iteration ($\Delta_{\text{domains}} == 0$).
 - If either condition is met, convergence is reached and the refinement loop terminates.
 
@@ -208,7 +211,7 @@ For ranked domains $D_i$ and $D_{i+1}$ sharing a spatial interface:
 
 ### 4.6 Step 7: Convergence Criteria
 Refinement completes successfully when:
-$$\frac{N_{\max}}{T} < 1.15 \quad \lor \quad \sum_{c \in \text{Cells}} |\text{domain}_{\text{new}}(c) - \text{domain}_{\text{old}}(c)| = 0$$
+$$\frac{N_{\max}}{T} < 1.05 \quad \lor \quad \sum_{c \in \text{Cells}} |\text{domain}_{\text{new}}(c) - \text{domain}_{\text{old}}(c)| = 0$$
 
 ---
 
@@ -222,11 +225,12 @@ The systematic refinement pipeline directly resolves key architectural issues ob
    - When an isolated basin is excessively large, Step 2 splits it into balanced halves while merging the two smallest connected neighboring domains, preserving the total domain count $K$ without stalling boundary exchanges.
 
 2. **Mitigation of Pairwise Overshoot (Step 3)**:
-   - Sorting domains and performing full boundary exchanges in rank order (1st-2nd, 2nd-3rd, ..., down to smallest) focuses rebalancing on the largest disparities first.
+   - Sorting domains and performing boundary exchanges at the longest contiguous line of points on their border focuses rebalancing on the largest disparities first.
    - The absolute distance-from-target rejection criterion ($\Delta_{\max}^{\text{after}} \le \Delta_{\max}^{\text{before}}$) guarantees that exchanges never worsen the imbalance of the most deviant domain, eliminating limit-cycle oscillations between neighboring domains.
 
-3. **Prevention of Domain Fragmentation (Step 4)**:
+3. **Prevention of Domain Fragmentation & Protrusions (Steps 4 & 5)**:
    - Connected component analysis preserves a single primary bulk per domain and continuously absorbs orphaned fragments into neighboring domains with the lowest workload.
+   - Step 5 alternates row and column sweeps to reassign isolated 1-point protrusions and bridge points to adjacent domains, using 4-neighbor voting with 9-point stencil tie-breaking.
 
 4. **Rigorous Convergence Bounds (Step 7)**:
-   - Defining convergence as $\le 15\%$ deviation above target domain size or complete state stability ensures deterministic termination and optimal computational load balance across all MPI ranks.
+   - Defining convergence as $< 5\%$ deviation above target domain size or complete state stability ensures deterministic termination and optimal computational load balance across all MPI ranks.
