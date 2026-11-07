@@ -2028,7 +2028,6 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
   // Initial domain decomposition: Recursive Orthogonal Bisection
   recursiveBisectDomain(0, nx - 1, 0, ny - 1, nx, land_sea_map, num_partitions,
                         1, partition_map);
-  record_map();
 
   // Count total wet points and compute target domain size
   int total_wet = 0;
@@ -2039,6 +2038,7 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
   }
 
   if (total_wet == 0) {
+    record_map();
     return partition_map;
   }
 
@@ -2067,35 +2067,25 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
 
       // Step 1: Check if smallest domain has neighbors. If not & size < 70%
       // target, split off coherent part of largest domain with neighbors.
-      if (rebalanceIsolatedSmallestDomain(
-              nx, ny, land_sea_map, num_partitions, partition_map, is_global,
-              partition_counts, partition_neighbors, target_size)) {
-        record_map();
-      }
+      rebalanceIsolatedSmallestDomain(
+          nx, ny, land_sea_map, num_partitions, partition_map, is_global,
+          partition_counts, partition_neighbors, target_size);
 
       // Step 2: Check if largest domain has neighbors. If not, split in two and
       // merge smallest adjacent pair with additional neighbors.
-      if (splitAndMergeLargestIsolatedDomain(
-              nx, ny, land_sea_map, num_partitions, partition_map, is_global,
-              partition_counts, partition_neighbors)) {
-        record_map();
-      }
+      splitAndMergeLargestIsolatedDomain(nx, ny, land_sea_map, num_partitions,
+                                         partition_map, is_global,
+                                         partition_counts, partition_neighbors);
 
       // Step 3: Sequential full boundary exchanges between adjacent ranked
       // domains (1st-2nd, 2nd-3rd, ..., down to smallest two)
-      int boundary_swaps = exchangeRankedBoundaries(
-          nx, ny, land_sea_map, num_partitions, partition_map, is_global,
-          partition_counts, target_size);
-      if (boundary_swaps > 0) {
-        record_map();
-      }
+      exchangeRankedBoundaries(nx, ny, land_sea_map, num_partitions,
+                               partition_map, is_global, partition_counts,
+                               target_size);
 
       // Step 4: Deal with disconnected pieces as in the present approach
-      int reassigned = reassignDisconnectedPieces(
-          nx, ny, land_sea_map, num_partitions, partition_map, is_global);
-      if (reassigned > 0) {
-        record_map();
-      }
+      reassignDisconnectedPieces(nx, ny, land_sea_map, num_partitions,
+                                 partition_map, is_global);
 
       // Step 5: Deal with small grid extensions (placeholder for now)
       dealWithSmallGridExtensions(nx, ny, land_sea_map, num_partitions,
