@@ -254,36 +254,89 @@ def build_domain_adjacency_graph(
                 adj[int(u)].add(int(v))
                 adj[int(v)].add(int(u))
 
+        # Diagonal neighbors (NE and SE) to prevent touching corner color collisions
+        diff_d1 = slice_data[:-1, :-1] != slice_data[1:, 1:]
+        for u, v in zip(slice_data[:-1, :-1][diff_d1], slice_data[1:, 1:][diff_d1]):
+            if u > 0 and v > 0 and u != v:
+                adj[int(u)].add(int(v))
+                adj[int(v)].add(int(u))
+
+        diff_d2 = slice_data[1:, :-1] != slice_data[:-1, 1:]
+        for u, v in zip(slice_data[1:, :-1][diff_d2], slice_data[:-1, 1:][diff_d2]):
+            if u > 0 and v > 0 and u != v:
+                adj[int(u)].add(int(v))
+                adj[int(v)].add(int(u))
+
+        if is_global and slice_data.shape[1] > 1:
+            diff_wd1 = slice_data[:-1, -1] != slice_data[1:, 0]
+            for u, v in zip(slice_data[:-1, -1][diff_wd1], slice_data[1:, 0][diff_wd1]):
+                if u > 0 and v > 0 and u != v:
+                    adj[int(u)].add(int(v))
+                    adj[int(v)].add(int(u))
+
+            diff_wd2 = slice_data[1:, -1] != slice_data[:-1, 0]
+            for u, v in zip(slice_data[1:, -1][diff_wd2], slice_data[:-1, 0][diff_wd2]):
+                if u > 0 and v > 0 and u != v:
+                    adj[int(u)].add(int(v))
+                    adj[int(v)].add(int(u))
+
     return adj
 
 
 def compute_minimal_domain_coloring(
     adj: dict[int, set[int]],
     max_colors: int = 10,
+    prev_color_map: dict[int, int] | None = None,
 ) -> dict[int, int]:
     """
-    Compute minimal chromatic graph coloring using the DSATUR / Welsh-Powell heuristic
+    Compute minimal chromatic graph coloring using the DSATUR heuristic
     such that adjacent domains never have the same color, using at most max_colors.
     """
     if not adj:
         return {}
 
-    # Sort domains by degree descending
-    ordered_nodes = sorted(adj.keys(), key=lambda node: len(adj[node]), reverse=True)
     color_map: dict[int, int] = {}
+    uncolored = set(adj.keys())
 
-    for node in ordered_nodes:
-        neighbor_colors = {
-            color_map[neighbor] for neighbor in adj[node] if neighbor in color_map
-        }
-        color_idx = 0
-        while color_idx in neighbor_colors:
-            color_idx += 1
+    while uncolored:
+        best_node = None
+        max_sat = -1
+        max_deg = -1
+
+        for node in uncolored:
+            nbr_colors = {color_map[nbr] for nbr in adj[node] if nbr in color_map}
+            sat = len(nbr_colors)
+            deg = len(adj[node])
+            if sat > max_sat or (sat == max_sat and deg > max_deg):
+                max_sat = sat
+                max_deg = deg
+                best_node = node
+
+        if best_node is None:
+            break
+
+        used_colors = {color_map[nbr] for nbr in adj[best_node] if nbr in color_map}
+
+        assigned_color = None
+        if prev_color_map and best_node in prev_color_map:
+            prev_c = prev_color_map[best_node]
+            if prev_c not in used_colors and prev_c < max_colors:
+                assigned_color = prev_c
+
+        if assigned_color is None:
+            color_idx = 0
+            while color_idx in used_colors and color_idx < max_colors:
+                color_idx += 1
             if color_idx >= max_colors:
-                # If all colors up to max_colors are taken by neighbors, fall back to
-                # least-frequently used color among non-conflicting or modulo wrap
-                break
-        color_map[node] = color_idx
+                color_conflicts = {c: 0 for c in range(max_colors)}
+                for nbr in adj[best_node]:
+                    if nbr in color_map and color_map[nbr] in color_conflicts:
+                        color_conflicts[color_map[nbr]] += 1
+                color_idx = min(color_conflicts, key=color_conflicts.get)
+            assigned_color = color_idx
+
+        color_map[best_node] = assigned_color
+        uncolored.remove(best_node)
 
     return color_map
 
@@ -547,13 +600,22 @@ def create_animation(
     from PIL import Image
 
     total_maps = maps.shape[0]
-    num_p_colors = max(color_map.values()) + 1 if color_map else 1
-    cmap, norm = get_feature_colormap(num_p_colors)
+    max_colors = min(10, max(num_domains, 1))
+    cmap, norm = get_feature_colormap(max_colors)
 
     pil_frames: list[Image.Image] = []
+    curr_color_map = color_map
     for idx in indices:
+        # Build adjacency graph for this specific frame so adjacent domains never share color
+        frame_adj = build_domain_adjacency_graph(
+            maps[idx : idx + 1], is_global=is_global
+        )
+        curr_color_map = compute_minimal_domain_coloring(
+            frame_adj, max_colors=max_colors, prev_color_map=curr_color_map
+        )
+
         disp, has_boundary, has_excluded = build_display_array(
-            maps[idx], color_map, grid_mask
+            maps[idx], curr_color_map, grid_mask
         )
 
         fig, ax = plt.subplots(figsize=(9, 6), facecolor="white")
@@ -566,7 +628,7 @@ def create_animation(
             norm,
             title,
             maps[idx],
-            color_map,
+            curr_color_map,
             grid_mask,
             is_global,
             has_boundary,

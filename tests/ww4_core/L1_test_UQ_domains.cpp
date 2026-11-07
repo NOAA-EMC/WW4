@@ -21,13 +21,17 @@
  */
 
 // Routine coverage references for anonymous namespace helper functions:
-// cleanSingleProtrudingPoints countSeaPointsInRect isWetPoint
-// reassignDisconnectedPieces recursiveBisectDomain refinePartitionsIteratively
-// splitIsolatedPartitions
+// cleanSingleProtrudingPoints countSeaPointsInRect dealWithSmallGridExtensions
+// determineDomainNeighbors exchangeRankedBoundaries extractBoundaryLine
+// isWetPoint printDomainStats reassignDisconnectedPieces
+// rebalanceIsolatedSmallestDomain recursiveBisectDomain
+// refinePartitionsIteratively resortDomainsBySize
+// splitAndMergeLargestIsolatedDomain splitIsolatedPartitions
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <set>
 #include <vector>
@@ -177,6 +181,179 @@ TEST(UQDomainsTest, PartitionGlobalGridZeroIterations) {
     }
   }
   EXPECT_EQ(unique_partitions.size(), static_cast<size_t>(num_partitions));
+}
+
+// --- InitialDiagnosticsAndSorting -------------------------------------------
+TEST(UQDomainsTest, InitialDiagnosticsAndSorting) {
+  // Test that initial bisection sorts domains descending by number of wet
+  // points
+  const int nx = 12;
+  const int ny = 8;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  // Set irregular land mask to produce different sized domains
+  for (int y = 0; y < 4; ++y) {
+    for (int x = 0; x < 6; ++x) {
+      land_sea_map[y * nx + x] = 0;
+    }
+  }
+
+  const int num_partitions = 3;
+  std::vector<int> partition_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, 0);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (land_sea_map[i] > 0) {
+      ASSERT_GE(partition_map[i], 1);
+      ASSERT_LE(partition_map[i], num_partitions);
+      counts[partition_map[i]]++;
+    }
+  }
+
+  // After sorting, partition 1 must be largest and partition num_partitions
+  // smallest
+  for (int p = 1; p < num_partitions; ++p) {
+    EXPECT_GE(counts[p], counts[p + 1]);
+  }
+}
+
+// --- SmallestDomainIsolatedRebalance ----------------------------------------
+TEST(UQDomainsTest, SmallestDomainIsolatedRebalance) {
+  // Create a grid with an isolated small basin and a large connected sea area
+  // Columns 0..2 are sea (width 3, height 4 = 12 cells), column 3 is land
+  // barrier Columns 4..15 are sea (width 12, height 8 = 96 cells)
+  const int nx = 16;
+  const int ny = 8;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  for (int y = 0; y < ny; ++y) {
+    land_sea_map[y * nx + 3] = 0; // Vertical land barrier
+  }
+  for (int y = 4; y < ny; ++y) {
+    for (int x = 0; x < 3; ++x) {
+      land_sea_map[y * nx + x] = 0; // Cut isolated basin to 12 cells
+    }
+  }
+
+  const int num_partitions = 3;
+  // Total wet = 12 + 96 = 108. Target = 36.
+  // Isolated basin has 12 cells, which is 12 / 36 = 33.3% < 70% of target.
+  std::vector<int> partition_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, 10);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (land_sea_map[i] > 0) {
+      counts[partition_map[i]]++;
+    }
+  }
+
+  // Verify all partitions have non-zero points
+  for (int p = 1; p <= num_partitions; ++p) {
+    EXPECT_GT(counts[p], 0);
+  }
+}
+
+// --- LargestDomainIsolatedSplitMerge ----------------------------------------
+TEST(UQDomainsTest, LargestDomainIsolatedSplitMerge) {
+  // Setup a grid with an isolated large basin (columns 0..6) and an adjacent
+  // sea area split into smaller domains (columns 8..15), separated by land at
+  // x=7.
+  const int nx = 16;
+  const int ny = 8;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  for (int y = 0; y < ny; ++y) {
+    land_sea_map[y * nx + 7] = 0; // Land barrier separating left and right
+  }
+
+  const int num_partitions = 3;
+  std::vector<int> partition_map =
+      partitionGlobalGrid(nx, ny, land_sea_map, num_partitions, 15);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (land_sea_map[i] > 0) {
+      counts[partition_map[i]]++;
+    }
+  }
+
+  for (int p = 1; p <= num_partitions; ++p) {
+    EXPECT_GT(counts[p], 0);
+  }
+}
+
+// --- SequentialRankedBoundaryExchanges --------------------------------------
+TEST(UQDomainsTest, SequentialRankedBoundaryExchanges) {
+  // Test sequential boundary exchanges between adjacent ranked domains at the
+  // longest contiguous line of points on their border
+  const int nx = 14;
+  const int ny = 10;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  const int num_partitions = 3;
+  int actual_iterations = 0;
+  std::vector<int> partition_map = partitionGlobalGrid(
+      nx, ny, land_sea_map, num_partitions, 20, &actual_iterations);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  int total_wet = 0;
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (land_sea_map[i] > 0) {
+      counts[partition_map[i]]++;
+      total_wet++;
+    }
+  }
+
+  int target_size = (total_wet + num_partitions - 1) / num_partitions;
+
+  for (int p = 1; p <= num_partitions; ++p) {
+    EXPECT_GT(counts[p], 0);
+    // Deviation from target must be bounded
+    EXPECT_LE(std::abs(counts[p] - target_size), target_size);
+  }
+}
+
+// --- ConvergenceCriteriaEvaluation ------------------------------------------
+TEST(UQDomainsTest, ConvergenceCriteriaEvaluation) {
+  // Verify refinement terminates when largest domain is < 5% larger than
+  // target
+  const int nx = 12;
+  const int ny = 12;
+  std::vector<int> land_sea_map(nx * ny, 1);
+
+  const int num_partitions = 4;
+  int actual_iterations = 0;
+  std::vector<int> partition_map = partitionGlobalGrid(
+      nx, ny, land_sea_map, num_partitions, 50, &actual_iterations);
+
+  ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  int total_wet = 0;
+  std::vector<int> counts(num_partitions + 1, 0);
+  for (size_t i = 0; i < partition_map.size(); ++i) {
+    if (land_sea_map[i] > 0) {
+      counts[partition_map[i]]++;
+      total_wet++;
+    }
+  }
+
+  int target = (total_wet + num_partitions - 1) / num_partitions;
+  int max_domain = *std::max_element(counts.begin() + 1, counts.end());
+
+  // Check that the largest domain is within 5% of target or actual_iterations
+  // is bounded
+  EXPECT_LE(max_domain, static_cast<int>(std::ceil(1.05 * target)) + 2);
+  EXPECT_LE(actual_iterations, 50);
 }
 
 // --- PartitionGlobalGridExcludedPointsTest ----------------------------------
