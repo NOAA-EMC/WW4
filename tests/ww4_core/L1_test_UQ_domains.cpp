@@ -292,7 +292,8 @@ TEST(UQDomainsTest, LargestDomainIsolatedSplitMerge) {
 
 // --- SequentialRankedBoundaryExchanges --------------------------------------
 TEST(UQDomainsTest, SequentialRankedBoundaryExchanges) {
-  // Test sequential boundary exchanges between adjacent ranked domains
+  // Test sequential boundary exchanges between adjacent ranked domains at the
+  // longest contiguous line of points on their border
   const int nx = 14;
   const int ny = 10;
   std::vector<int> land_sea_map(nx * ny, 1);
@@ -304,15 +305,21 @@ TEST(UQDomainsTest, SequentialRankedBoundaryExchanges) {
 
   ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
 
+  int total_wet = 0;
   std::vector<int> counts(num_partitions + 1, 0);
   for (size_t i = 0; i < partition_map.size(); ++i) {
     if (land_sea_map[i] > 0) {
       counts[partition_map[i]]++;
+      total_wet++;
     }
   }
 
+  int target_size = (total_wet + num_partitions - 1) / num_partitions;
+
   for (int p = 1; p <= num_partitions; ++p) {
     EXPECT_GT(counts[p], 0);
+    // Deviation from target must be bounded
+    EXPECT_LE(std::abs(counts[p] - target_size), target_size);
   }
 }
 

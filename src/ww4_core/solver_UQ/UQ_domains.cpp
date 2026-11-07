@@ -860,6 +860,10 @@ std::vector<int> extractBoundaryLine(int nx, int ny,
   const int dx[] = {0, 0, -1, 1};
   const int dy[] = {-1, 1, 0, 0};
 
+  std::vector<int> longest_line;
+  std::vector<bool> checked_h(nx * ny, false);
+  std::vector<bool> checked_v(nx * ny, false);
+
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
       int idx = y * nx + x;
@@ -868,6 +872,13 @@ std::vector<int> extractBoundaryLine(int nx, int ny,
       }
 
       for (int k = 0; k < 4; ++k) {
+        if ((k == 0 || k == 1) && checked_h[idx]) {
+          continue;
+        }
+        if ((k == 2 || k == 3) && checked_v[idx]) {
+          continue;
+        }
+
         int nbr_x = x + dx[k];
         int nbr_y = y + dy[k];
         if (nbr_y < 0 || nbr_y >= ny) {
@@ -948,7 +959,9 @@ std::vector<int> extractBoundaryLine(int nx, int ny,
             int total_line = left_count + 1 + right_count;
             int cur = cur_left;
             for (int s = 0; s < total_line; ++s) {
-              line_indices.push_back(y * nx + cur);
+              int line_cell = y * nx + cur;
+              line_indices.push_back(line_cell);
+              checked_h[line_cell] = true;
               cur = is_global ? ((cur + 1) % nx) : (cur + 1);
             }
           } else {
@@ -998,19 +1011,21 @@ std::vector<int> extractBoundaryLine(int nx, int ny,
             }
 
             for (int r = y_start; r <= y_end; ++r) {
-              line_indices.push_back(r * nx + x);
+              int line_cell = r * nx + x;
+              line_indices.push_back(line_cell);
+              checked_v[line_cell] = true;
             }
           }
 
-          if (!line_indices.empty()) {
-            return line_indices;
+          if (line_indices.size() > longest_line.size()) {
+            longest_line = std::move(line_indices);
           }
         }
       }
     }
   }
 
-  return {};
+  return longest_line;
 }
 
 // --- exchangeRankedBoundaries -----------------------------------------------
