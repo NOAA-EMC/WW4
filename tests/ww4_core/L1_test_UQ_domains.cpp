@@ -22,9 +22,10 @@
 
 // Routine coverage references for anonymous namespace helper functions:
 // cleanSingleProtrudingPoints countSeaPointsInRect dealWithSmallGridExtensions
-// determineDomainNeighbors exchangeRankedBoundaries isWetPoint
-// printDomainStats reassignDisconnectedPieces rebalanceIsolatedSmallestDomain
-// recursiveBisectDomain refinePartitionsIteratively resortDomainsBySize
+// determineDomainNeighbors exchangeRankedBoundaries extractBoundaryLine
+// isWetPoint printDomainStats reassignDisconnectedPieces
+// rebalanceIsolatedSmallestDomain recursiveBisectDomain
+// refinePartitionsIteratively resortDomainsBySize
 // splitAndMergeLargestIsolatedDomain splitIsolatedPartitions
 
 #include <gtest/gtest.h>

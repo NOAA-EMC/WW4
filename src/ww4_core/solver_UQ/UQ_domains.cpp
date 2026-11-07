@@ -840,13 +840,188 @@ bool splitAndMergeLargestIsolatedDomain(
   return true;
 }
 
+// --- extractBoundaryLine ----------------------------------------------------
+/**
+ * @brief Extracts a contiguous line (segment along row or column) of boundary
+ * cells belonging to src domain that border dst domain.
+ * @param nx Number of longitudinal grid columns.
+ * @param ny Number of latitudinal grid rows.
+ * @param land_sea_map 2D land-sea mask span.
+ * @param partition_map Current partition assignments.
+ * @param is_global Flag indicating 360-degree longitudinal grid closure.
+ * @param src Source partition ID.
+ * @param dst Destination partition ID.
+ * @return Vector of cell indices forming the contiguous boundary line.
+ */
+std::vector<int> extractBoundaryLine(int nx, int ny,
+                                     std::span<const int> land_sea_map,
+                                     const std::vector<int> &partition_map,
+                                     bool is_global, int src, int dst) {
+  const int dx[] = {0, 0, -1, 1};
+  const int dy[] = {-1, 1, 0, 0};
+
+  for (int y = 0; y < ny; ++y) {
+    for (int x = 0; x < nx; ++x) {
+      int idx = y * nx + x;
+      if (!isWetPoint(land_sea_map[idx]) || partition_map[idx] != src) {
+        continue;
+      }
+
+      for (int k = 0; k < 4; ++k) {
+        int nbr_x = x + dx[k];
+        int nbr_y = y + dy[k];
+        if (nbr_y < 0 || nbr_y >= ny) {
+          continue;
+        }
+        if (is_global) {
+          nbr_x = (nbr_x + nx) % nx;
+        } else if (nbr_x < 0 || nbr_x >= nx) {
+          continue;
+        }
+
+        int nbr_idx = nbr_y * nx + nbr_x;
+        if (isWetPoint(land_sea_map[nbr_idx]) &&
+            partition_map[nbr_idx] == dst) {
+          std::vector<int> line_indices;
+          if (k == 0 || k == 1) {
+            // Horizontal line along row y
+            int left_count = 0;
+            int cur_left = x;
+            while (left_count < nx - 1) {
+              int next_left =
+                  is_global ? ((cur_left - 1 + nx) % nx) : (cur_left - 1);
+              if (next_left < 0) {
+                break;
+              }
+              int test_idx = y * nx + next_left;
+              if (!isWetPoint(land_sea_map[test_idx]) ||
+                  partition_map[test_idx] != src) {
+                break;
+              }
+              int test_nbr_x = next_left + dx[k];
+              int test_nbr_y = y + dy[k];
+              if (test_nbr_y < 0 || test_nbr_y >= ny) {
+                break;
+              }
+              if (is_global) {
+                test_nbr_x = (test_nbr_x + nx) % nx;
+              }
+              int test_nbr_idx = test_nbr_y * nx + test_nbr_x;
+              if (!isWetPoint(land_sea_map[test_nbr_idx]) ||
+                  partition_map[test_nbr_idx] != dst) {
+                break;
+              }
+              cur_left = next_left;
+              left_count++;
+            }
+
+            int right_count = 0;
+            int cur_right = x;
+            while (left_count + right_count < nx - 1) {
+              int next_right =
+                  is_global ? ((cur_right + 1) % nx) : (cur_right + 1);
+              if (next_right >= nx) {
+                break;
+              }
+              int test_idx = y * nx + next_right;
+              if (!isWetPoint(land_sea_map[test_idx]) ||
+                  partition_map[test_idx] != src) {
+                break;
+              }
+              int test_nbr_x = next_right + dx[k];
+              int test_nbr_y = y + dy[k];
+              if (test_nbr_y < 0 || test_nbr_y >= ny) {
+                break;
+              }
+              if (is_global) {
+                test_nbr_x = (test_nbr_x + nx) % nx;
+              }
+              int test_nbr_idx = test_nbr_y * nx + test_nbr_x;
+              if (!isWetPoint(land_sea_map[test_nbr_idx]) ||
+                  partition_map[test_nbr_idx] != dst) {
+                break;
+              }
+              cur_right = next_right;
+              right_count++;
+            }
+
+            int total_line = left_count + 1 + right_count;
+            int cur = cur_left;
+            for (int s = 0; s < total_line; ++s) {
+              line_indices.push_back(y * nx + cur);
+              cur = is_global ? ((cur + 1) % nx) : (cur + 1);
+            }
+          } else {
+            // Vertical line along column x
+            int y_start = y;
+            while (y_start > 0) {
+              int test_idx = (y_start - 1) * nx + x;
+              if (!isWetPoint(land_sea_map[test_idx]) ||
+                  partition_map[test_idx] != src) {
+                break;
+              }
+              int test_nbr_x = x + dx[k];
+              int test_nbr_y = (y_start - 1) + dy[k];
+              if (is_global) {
+                test_nbr_x = (test_nbr_x + nx) % nx;
+              } else if (test_nbr_x < 0 || test_nbr_x >= nx) {
+                break;
+              }
+              int test_nbr_idx = test_nbr_y * nx + test_nbr_x;
+              if (!isWetPoint(land_sea_map[test_nbr_idx]) ||
+                  partition_map[test_nbr_idx] != dst) {
+                break;
+              }
+              y_start--;
+            }
+
+            int y_end = y;
+            while (y_end < ny - 1) {
+              int test_idx = (y_end + 1) * nx + x;
+              if (!isWetPoint(land_sea_map[test_idx]) ||
+                  partition_map[test_idx] != src) {
+                break;
+              }
+              int test_nbr_x = x + dx[k];
+              int test_nbr_y = (y_end + 1) + dy[k];
+              if (is_global) {
+                test_nbr_x = (test_nbr_x + nx) % nx;
+              } else if (test_nbr_x < 0 || test_nbr_x >= nx) {
+                break;
+              }
+              int test_nbr_idx = test_nbr_y * nx + test_nbr_x;
+              if (!isWetPoint(land_sea_map[test_nbr_idx]) ||
+                  partition_map[test_nbr_idx] != dst) {
+                break;
+              }
+              y_end++;
+            }
+
+            for (int r = y_start; r <= y_end; ++r) {
+              line_indices.push_back(r * nx + x);
+            }
+          }
+
+          if (!line_indices.empty()) {
+            return line_indices;
+          }
+        }
+      }
+    }
+  }
+
+  return {};
+}
+
 // --- exchangeRankedBoundaries -----------------------------------------------
 /**
- * @brief Exchanges full boundary data between adjacent size-ranked domains.
- * @details Evaluates boundary cell transfers between ranked domain pairs
- * (1st-2nd, 2nd-3rd, ..., down to smallest two). The exchange is rejected if
- * the domain furthest from target size becomes even further away in absolute
- * value.
+ * @brief Exchanges boundary lines between size-ranked domains and their
+ * neighbors.
+ * @details Iterates from largest to smallest domain. If above target,
+ * transfers grid points per line to its smallest neighbor. If below target,
+ * takes a line of cells from its largest neighbor. Adjusts cell counts on the
+ * fly without re-sorting during the loop. Rejects any exchange if the domain
+ * furthest from target becomes even further away in absolute value.
  * @param nx Number of longitudinal grid columns.
  * @param ny Number of latitudinal grid rows.
  * @param land_sea_map 2D land-sea mask span.
@@ -867,27 +1042,14 @@ int exchangeRankedBoundaries(int nx, int ny, std::span<const int> land_sea_map,
 
   int total_swaps = 0;
 
-  for (int i = 1; i < num_partitions; ++i) {
-    int p1 = i;
-    int p2 = i + 1;
-
-    // Determine direction of transfer: from larger domain to smaller domain
-    int src_p = (partition_counts[p1] >= partition_counts[p2]) ? p1 : p2;
-    int dst_p = (src_p == p1) ? p2 : p1;
-
-    if (partition_counts[src_p] <= partition_counts[dst_p]) {
-      continue;
-    }
-
-    std::vector<int> boundary_cells;
+  for (int p = 1; p <= num_partitions; ++p) {
+    std::set<int> neighbors;
     for (int y = 0; y < ny; ++y) {
       for (int x = 0; x < nx; ++x) {
         int idx = y * nx + x;
-        if (!isWetPoint(land_sea_map[idx]) || partition_map[idx] != src_p) {
+        if (!isWetPoint(land_sea_map[idx]) || partition_map[idx] != p) {
           continue;
         }
-
-        bool adj_to_dst = false;
         for (int k = 0; k < 4; ++k) {
           int nbr_x = x + dx[k];
           int nbr_y = y + dy[k];
@@ -900,39 +1062,86 @@ int exchangeRankedBoundaries(int nx, int ny, std::span<const int> land_sea_map,
             continue;
           }
           int nbr_idx = nbr_y * nx + nbr_x;
-          if (isWetPoint(land_sea_map[nbr_idx]) &&
-              partition_map[nbr_idx] == dst_p) {
-            adj_to_dst = true;
-            break;
+          if (isWetPoint(land_sea_map[nbr_idx])) {
+            int nbr_p = partition_map[nbr_idx];
+            if (nbr_p >= 1 && nbr_p <= num_partitions && nbr_p != p) {
+              neighbors.insert(nbr_p);
+            }
           }
-        }
-
-        if (adj_to_dst) {
-          boundary_cells.push_back(idx);
         }
       }
     }
 
-    int S = static_cast<int>(boundary_cells.size());
-    if (S == 0 || partition_counts[src_p] <= S) {
+    if (neighbors.empty()) {
       continue;
     }
 
-    int dev_before = std::max(std::abs(partition_counts[src_p] - target_size),
-                              std::abs(partition_counts[dst_p] - target_size));
-
-    int new_src_count = partition_counts[src_p] - S;
-    int new_dst_count = partition_counts[dst_p] + S;
-    int dev_after = std::max(std::abs(new_src_count - target_size),
-                             std::abs(new_dst_count - target_size));
-
-    if (dev_after <= dev_before) {
-      for (int idx : boundary_cells) {
-        partition_map[idx] = dst_p;
+    if (partition_counts[p] > target_size) {
+      int smallest_nbr = -1;
+      int min_count = -1;
+      for (int nbr : neighbors) {
+        if (smallest_nbr == -1 || partition_counts[nbr] < min_count) {
+          min_count = partition_counts[nbr];
+          smallest_nbr = nbr;
+        }
       }
-      partition_counts[src_p] = new_src_count;
-      partition_counts[dst_p] = new_dst_count;
-      total_swaps += S;
+
+      if (smallest_nbr != -1) {
+        std::vector<int> line = extractBoundaryLine(
+            nx, ny, land_sea_map, partition_map, is_global, p, smallest_nbr);
+        int S = static_cast<int>(line.size());
+        if (S > 0 && partition_counts[p] > S) {
+          int dev_before =
+              std::max(std::abs(partition_counts[p] - target_size),
+                       std::abs(partition_counts[smallest_nbr] - target_size));
+          int new_p = partition_counts[p] - S;
+          int new_nbr = partition_counts[smallest_nbr] + S;
+          int dev_after = std::max(std::abs(new_p - target_size),
+                                   std::abs(new_nbr - target_size));
+
+          if (dev_after <= dev_before) {
+            for (int idx : line) {
+              partition_map[idx] = smallest_nbr;
+            }
+            partition_counts[p] = new_p;
+            partition_counts[smallest_nbr] = new_nbr;
+            total_swaps += S;
+          }
+        }
+      }
+    } else if (partition_counts[p] < target_size) {
+      int largest_nbr = -1;
+      int max_count = -1;
+      for (int nbr : neighbors) {
+        if (largest_nbr == -1 || partition_counts[nbr] > max_count) {
+          max_count = partition_counts[nbr];
+          largest_nbr = nbr;
+        }
+      }
+
+      if (largest_nbr != -1) {
+        std::vector<int> line = extractBoundaryLine(
+            nx, ny, land_sea_map, partition_map, is_global, largest_nbr, p);
+        int S = static_cast<int>(line.size());
+        if (S > 0 && partition_counts[largest_nbr] > S) {
+          int dev_before =
+              std::max(std::abs(partition_counts[p] - target_size),
+                       std::abs(partition_counts[largest_nbr] - target_size));
+          int new_p = partition_counts[p] + S;
+          int new_nbr = partition_counts[largest_nbr] - S;
+          int dev_after = std::max(std::abs(new_p - target_size),
+                                   std::abs(new_nbr - target_size));
+
+          if (dev_after <= dev_before) {
+            for (int idx : line) {
+              partition_map[idx] = p;
+            }
+            partition_counts[p] = new_p;
+            partition_counts[largest_nbr] = new_nbr;
+            total_swaps += S;
+          }
+        }
+      }
     }
   }
 

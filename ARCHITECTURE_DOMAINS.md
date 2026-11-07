@@ -132,6 +132,8 @@ flowchart TD
   - Exchange full boundary data between the 1st and 2nd largest domains.
   - Repeat between the 2nd and 3rd largest domains.
   - Continue sequentially through all ranked pairs down to the two smallest domains ($i = 1, 2, \dots, K-1$).
+  - For each domain, if cell count is above target, boundary grid points are transferred per line to its smallest neighbor; if below target, a line of cells is taken from its largest neighbor.
+  - Cell counts of exchanging domains are adjusted on the fly, without re-sorting the list while in the loop over all domains.
 - **Rejection Criterion**: Do not exchange boundary data if the exchange results in the domain that is furthest away from the target size becoming even further away (in absolute value) after the exchange:
   $$\Delta_{\max}^{\text{after}} > \Delta_{\max}^{\text{before}}$$
   where:
