@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -181,10 +181,18 @@ void solver_UQ_init(std::ostream &os) {
 
   // === Domain decomposition setup ==========================================
 
-  // Determine partition file name by adding ".partitions" before file extension
+  // Determine partition file name by adding ".partitions" before file
+  // extension, stripping "-ugrid" or "_ugrid" from stem if present.
   std::filesystem::path gridFilePath(getRunConfig().gridFile);
-  std::string partFileName = gridFilePath.stem().string() + ".partitions" +
-                             gridFilePath.extension().string();
+  std::string gridStem = gridFilePath.stem().string();
+  std::string partBaseName = gridStem;
+  if (partBaseName.size() >= 6 &&
+      (partBaseName.rfind("_ugrid") == partBaseName.size() - 6 ||
+       partBaseName.rfind("-ugrid") == partBaseName.size() - 6)) {
+    partBaseName.resize(partBaseName.size() - 6);
+  }
+  std::string partFileName =
+      partBaseName + ".partitions" + gridFilePath.extension().string();
   std::filesystem::path partFilePath =
       gridFilePath.has_parent_path()
           ? (gridFilePath.parent_path() / partFileName)
@@ -297,7 +305,8 @@ void solver_UQ_init(std::ostream &os) {
     partitionMap = ww4_utils::UQ_utils::partitionGlobalGrid(
         static_cast<int>(ugrid.nx), static_cast<int>(ugrid.ny),
         fullGrid.landMask, getRunConfig().numRanksCompute,
-        getRunConfig().maxIterations, nullptr, rectData.isGlobal, recorder);
+        getRunConfig().maxIterations, nullptr, rectData.isGlobal, recorder,
+        getRunConfig().convergenceCriterion);
 
     // If partition map is successfully created, write or finalize partition
     // file
@@ -339,46 +348,6 @@ void solver_UQ_init(std::ostream &os) {
         }
       }
 
-      // Compute final domain sizes (active wet points per partition) and output
-      // histogram only when a new partition map is generated
-      if (getRunConfig().numRanksCompute > 0) {
-        int totalActiveWetPoints = 0;
-        std::vector<int> domainSizes(getRunConfig().numRanksCompute + 1, 0);
-        for (size_t i = 0; i < partitionMap.size(); ++i) {
-          int pid = partitionMap[i];
-          if (pid >= 1 && pid <= getRunConfig().numRanksCompute &&
-              (fullGrid.landMask[i] == 1 || fullGrid.landMask[i] == 2)) {
-            domainSizes[pid]++;
-            totalActiveWetPoints++;
-          }
-        }
-
-        // Sort domain sizes and group per size in histogram format
-        std::map<int, int> sizeHistogram;
-        for (int p = 1; p <= getRunConfig().numRanksCompute; ++p) {
-          sizeHistogram[domainSizes[p]]++;
-        }
-
-        double meanSize = static_cast<double>(totalActiveWetPoints) /
-                          static_cast<double>(getRunConfig().numRanksCompute);
-
-        auto printHistogram = [&](std::ostream &out) {
-          out << "     Final domain sizes (mean: " << std::fixed
-              << std::setprecision(1) << meanSize << "):" << std::endl;
-          for (const auto &[sz, count] : sizeHistogram) {
-            out << "        " << std::setw(6) << sz
-                << " points : " << std::string(count, '*') << " (" << count
-                << ")" << std::endl;
-          }
-        };
-
-        if (getRunConfig().produceStdOut) {
-          printHistogram(os);
-        }
-        if (getLogFileStream().is_open() && getRunConfig().produceLogFile) {
-          printHistogram(getLogFileStream());
-        }
-      }
     } else if (ncid >= 0) {
       static_cast<void>(ww4::io::closeUQpartitionMapFile(ncid));
     }
@@ -535,13 +504,13 @@ void solver_UQ_init(std::ostream &os) {
 
     // Optional writing of extracted local domain grid to NetCDF file
     if (getRunConfig().writeLocalGrid) {
-      // Derive local domain grid filename: <BASE_NAME>_ugrid_part<NNN>.nc
+      // Derive local domain grid filename: <BASE_NAME>.part<NNN>.nc
       std::string stem = gridFilePath.stem().string();
-      std::string baseName;
-      if (stem.size() >= 6 && stem.rfind("_ugrid") == stem.size() - 6) {
-        baseName = stem.substr(0, stem.size() - 6);
-      } else {
-        baseName = stem;
+      std::string baseName = stem;
+      if (baseName.size() >= 6 &&
+          (baseName.rfind("_ugrid") == baseName.size() - 6 ||
+           baseName.rfind("-ugrid") == baseName.size() - 6)) {
+        baseName.resize(baseName.size() - 6);
       }
 
       // Format zero-padded 0-based partition number <NNN>
@@ -559,7 +528,7 @@ void solver_UQ_init(std::ostream &os) {
       partNumOss << std::setw(padWidth) << std::setfill('0')
                  << getRunConfig().actualRank;
       const std::string localGridFileName =
-          baseName + "_ugrid_part" + partNumOss.str() + ".nc";
+          baseName + ".part" + partNumOss.str() + ".nc";
 
       std::filesystem::path localGridPath =
           gridFilePath.has_parent_path()

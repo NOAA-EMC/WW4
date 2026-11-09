@@ -1,6 +1,6 @@
 # WAVEWATCH IV Domain Decomposition Architecture
 
-*Last updated: November 6, 2026*
+*Last updated: November 9, 2026*
 
 This document describes the domain decomposition architecture, initial partitioning, integrated iterative refinement loop, and convergence criteria for regular structured (UQ) grids in WAVEWATCH IV (`src/ww4_core/solver_UQ/UQ_domains.cpp`).
 
@@ -8,7 +8,7 @@ This document describes the domain decomposition architecture, initial partition
 
 ## 1. Domain Decomposition Pipeline Overview
 
-Domain decomposition divides the active computational wet (sea) points of a full model grid ($N_{\text{wet}}$) into $K$ balanced computational domains (where $K = \text{num\_domains}$ or $\text{num\_ranks\_compute}$) to enable efficient parallel execution.
+Domain decomposition divides the active computational wet (sea) points of a full model grid ($N_{\text{wet}}$) into $K$ balanced computational domains (where `K` is `num_domains` or `num_ranks_compute`) to enable efficient parallel execution.
 
 The decomposition pipeline consists of two primary stages:
 1. **Initial Domain Decomposition**: Recursive Orthogonal Bisection partitions the grid into $K$ initial domains. Following bisection, domains are sorted by their active wet cell count, spatial neighbor relationships are determined, and baseline test diagnostics are written to stdout.
@@ -16,20 +16,20 @@ The decomposition pipeline consists of two primary stages:
 
 ```mermaid
 flowchart TD
-    Start([Start Domain Decomposition]) --> Bisect[1. Recursive Orthogonal Bisection<br/>Divide computational domain into K initial domains]
-    Bisect --> SortInit[Post-Bisection Initialization:<br/>- Sort all domains by number of wet points<br/>- Determine 4-connected spatial neighbors of each domain]
-    SortInit --> StdoutInit[Output Initial Test Diagnostics to stdout:<br/>- Highest and lowest number of grid points<br/>- Largest domain size as % of target domain size]
+    Start([Start Domain Decomposition]) --> Bisect["1. Recursive Orthogonal Bisection<br/>Divide computational domain into K initial domains"]
+    Bisect --> SortInit["Post-Bisection Initialization:<br/>- Sort all domains by number of wet points<br/>- Determine 4-connected spatial neighbors of each domain"]
+    SortInit --> StdoutInit["Output Initial Test Diagnostics to stdout:<br/>- Highest and lowest number of grid points<br/>- Largest domain size as % of target domain size"]
 
-    StdoutInit --> LoopStart([Enter Integrated Refinement Loop<br/>iter = 1 ... max_iterations])
+    StdoutInit --> LoopStart(["Enter Integrated Refinement Loop<br/>iter = 1 ... max_iterations"])
 
     subgraph IntegratedRefinement [Integrated Refinement Loop]
-        Step1[Step 1: Check Smallest Domain Neighbors<br/>If no neighbors & size < 70% target:<br/>Split coherent part of largest domain with neighbors<br/>Resort domains & adjust neighbor information]
-        Step2[Step 2: Check Largest Domain Neighbors<br/>If no neighbors:<br/>Split largest domain into 2 near-equal parts<br/>Merge smallest adjacent pair with external neighbors<br/>Resort domains & adjust neighbor information]
-        Step3[Step 3: Sequential Full Boundary Exchanges<br/>Pairwise: 1st-2nd, 2nd-3rd, ..., (K-1)th-Kth largest<br/>Reject swap if furthest domain from target gets further away]
-        Step4[Step 4: Deal with Disconnected Pieces<br/>Identify components via 4-connectivity BFS<br/>Retain largest bulk; reassign small pieces to smallest neighbor]
-        Step5[Step 5: Deal with Small Grid Extensions<br/>Row/col boundary point smoothing & voting<br/>Alternating row/col order per iteration]
-        Step6[Step 6: Resort Domains & Re-establish Neighbors<br/>Resort domains by size and update neighbor tables<br/>Write diagnostic test info to stdout]
-        Step7{Step 7: Convergence Check<br/>Largest domain < 5% above target OR<br/>No domains changed in current iteration?}
+        Step1["Step 1: Check Smallest Domain Neighbors<br/>If no neighbors &amp; size &lt; 70% target:<br/>Split coherent part of largest domain with neighbors<br/>Resort domains &amp; adjust neighbor information"]
+        Step2["Step 2: Check Largest Domain Neighbors<br/>If no neighbors:<br/>Split largest domain into 2 near-equal parts<br/>Merge smallest adjacent pair with external neighbors<br/>Resort domains &amp; adjust neighbor information"]
+        Step3["Step 3: Sequential Full Boundary Exchanges<br/>Pairwise: 1st-2nd, 2nd-3rd, ..., (K-1)th-Kth largest<br/>Reject swap if furthest domain from target gets further away"]
+        Step4["Step 4: Deal with Disconnected Pieces<br/>Identify components via 4-connectivity BFS<br/>Retain largest bulk; reassign small pieces to smallest neighbor"]
+        Step5["Step 5: Deal with Small Grid Extensions<br/>Row/col boundary point smoothing &amp; voting<br/>Alternating row/col order per iteration"]
+        Step6["Step 6: Resort Domains &amp; Re-establish Neighbors<br/>Resort domains by size and update neighbor tables<br/>Write diagnostic test info to stdout"]
+        Step7{"Step 7: Convergence Check<br/>Largest domain &lt; 5% above target OR<br/>No domains changed in current iteration?"}
 
         Step1 --> Step2
         Step2 --> Step3
@@ -40,8 +40,8 @@ flowchart TD
     end
 
     LoopStart --> Step1
-    Step7 -- Yes: Converged --> Done([Decomposition Complete<br/>Return Final Domain Map])
-    Step7 -- No: Continue --> MaxCheck{iter < max_iterations?}
+    Step7 -- Yes: Converged --> Done(["Decomposition Complete<br/>Return Final Domain Map"])
+    Step7 -- No: Continue --> MaxCheck{"iter &lt; max_iterations?"}
     MaxCheck -- Yes --> Step1
     MaxCheck -- No: Iteration Limit --> Done
 ```
@@ -74,39 +74,39 @@ $$T = \left\lceil \frac{N_{\text{wet}}}{K} \right\rceil$$
 
 ## 3. The Integrated Refinement Loop
 
-The refinement phase consists of a single integrated loop executing seven sequential steps during each iteration (`iter = 1, 2, \dots, \text{max\_iterations}`):
+The refinement phase consists of a single integrated loop executing seven sequential steps during each iteration (`iter = 1, 2, ..., max_iterations`):
 
 ```mermaid
 flowchart TD
-    IterStart([Start Refinement Iteration]) --> S1Check{Step 1: Smallest domain<br/>has neighbors?}
-    S1Check -- Has Neighbors --> S2Check{Step 2: Largest domain<br/>has neighbors?}
-    S1Check -- No Neighbors --> S1Size{Size < 70% of target?<br/>N_min < 0.70 * T}
-    S1Size -- Yes --> S1Split[Split off coherent part of largest domain with neighbors<br/>Add to smallest domain so resulting size ~ target<br/>Resort domains & adjust neighbor information]
+    IterStart(["Start Refinement Iteration"]) --> S1Check{"Step 1: Smallest domain<br/>has neighbors?"}
+    S1Check -- Has Neighbors --> S2Check{"Step 2: Largest domain<br/>has neighbors?"}
+    S1Check -- No Neighbors --> S1Size{"Size &lt; 70% of target?<br/>N_min &lt; 0.70 * T"}
+    S1Size -- Yes --> S1Split["Split off coherent part of largest domain with neighbors<br/>Add to smallest domain so resulting size ~ target<br/>Resort domains &amp; adjust neighbor information"]
     S1Size -- No --> S2Check
     S1Split --> S2Check
 
-    S2Check -- Has Neighbors --> S3Loop[Step 3: Sequential Full Boundary Exchanges<br/>Iterate pairs i = 1 ... K-1 from largest to smallest]
-    S2Check -- No Neighbors --> S2Action[Split largest domain into 2 near-equal parts<br/>Merge two adjacent domains with smallest combined size<br/>that have additional external neighbors<br/>Resort domains & adjust neighbor information]
+    S2Check -- Has Neighbors --> S3Loop["Step 3: Sequential Full Boundary Exchanges<br/>Iterate pairs i = 1 ... K-1 from largest to smallest"]
+    S2Check -- No Neighbors --> S2Action["Split largest domain into 2 near-equal parts<br/>Merge two adjacent domains with smallest combined size<br/>that have additional external neighbors<br/>Resort domains &amp; adjust neighbor information"]
     S2Action --> S3Loop
 
-    S3Loop --> S3Swap{Furthest domain from target<br/>gets even further away<br/>in absolute value?}
-    S3Swap -- Yes --> S3Skip[Skip exchange for this pair]
-    S3Swap -- No --> S3Exec[Exchange full boundary data between pair]
-    S3Skip --> S3Next{More pairs?}
+    S3Loop --> S3Swap{"Furthest domain from target<br/>gets even further away<br/>in absolute value?"}
+    S3Swap -- Yes --> S3Skip["Skip exchange for this pair"]
+    S3Swap -- No --> S3Exec["Exchange full boundary data between pair"]
+    S3Skip --> S3Next{"More pairs?"}
     S3Exec --> S3Next
     S3Next -- Yes --> S3Loop
-    S3Next -- No --> S4Disconn[Step 4: Reassign Disconnected Pieces<br/>Identify components via 4-connectivity BFS<br/>Retain primary bulk; reassign small pieces to smallest neighbor]
+    S3Next -- No --> S4Disconn["Step 4: Reassign Disconnected Pieces<br/>Identify components via 4-connectivity BFS<br/>Retain primary bulk; reassign small pieces to smallest neighbor"]
 
-    S4Disconn --> S5Ext[Step 5: Deal with Small Grid Extensions<br/>Row/col boundary point smoothing & voting<br/>Alternating row/col order per iteration]
+    S4Disconn --> S5Ext["Step 5: Deal with Small Grid Extensions<br/>Row/col boundary point smoothing &amp; voting<br/>Alternating row/col order per iteration"]
 
-    S5Ext --> S6Resort[Step 6: Resort Domains & Update Neighbors<br/>Resort all domains by active cell count<br/>Re-establish spatial neighbor tables<br/>Write test diagnostics to stdout]
+    S5Ext --> S6Resort["Step 6: Resort Domains &amp; Update Neighbors<br/>Resort all domains by active cell count<br/>Re-establish spatial neighbor tables<br/>Write test diagnostics to stdout"]
 
-    S6Resort --> S7Conv{Step 7: Convergence Reached?<br/>- Largest domain < 5% larger than target (N_max < 1.05 * T)<br/>OR<br/>- No domain assignments changed in current iteration}
+    S6Resort --> S7Conv{"Step 7: Convergence Reached?<br/>- Largest domain &lt; 5% larger than target (N_max &lt; 1.05 * T)<br/>OR<br/>- No domain assignments changed in current iteration"}
 
-    S7Conv -- Yes --> ExitLoop([Exit Refinement Loop: Converged])
-    S7Conv -- No --> S8Limit{iter >= max_iterations?}
+    S7Conv -- Yes --> ExitLoop(["Exit Refinement Loop: Converged"])
+    S7Conv -- No --> S8Limit{"iter &gt;= max_iterations?"}
     S8Limit -- Yes --> ExitLoop
-    S8Limit -- No --> NextIter([Proceed to Next Iteration])
+    S8Limit -- No --> NextIter(["Proceed to Next Iteration"])
 ```
 
 ### Step 1: Smallest Domain Isolation and Underload Handling
@@ -166,7 +166,7 @@ flowchart TD
 - Evaluate whether the iterative refinement has converged:
   1. **Load balance criterion**: The largest domain is less than 5% larger than the target domain size:
      $$\max_{1 \le i \le K} N_i < 1.05 \times T$$
-  2. **Stability criterion**: No domain cell assignments have changed in the present iteration ($\Delta_{\text{domains}} == 0$).
+  2. **Stability criterion**: No domain cell assignments have changed in the present iteration ($\Delta_{\mathrm{domains}} == 0$).
 - If either condition is met, convergence is reached and the refinement loop terminates.
 
 ### Loop Continuation
@@ -211,7 +211,7 @@ For ranked domains $D_i$ and $D_{i+1}$ sharing a spatial interface:
 
 ### 4.6 Step 7: Convergence Criteria
 Refinement completes successfully when:
-$$\frac{N_{\max}}{T} < 1.05 \quad \lor \quad \sum_{c \in \text{Cells}} |\text{domain}_{\text{new}}(c) - \text{domain}_{\text{old}}(c)| = 0$$
+$$\frac{N_{\max}}{T} < 1.05 \quad \lor \quad \sum_{c \in \text{Cells}} |\text{domain}_{\mathrm{new}}(c) - \text{domain}_{\mathrm{old}}(c)| = 0$$
 
 ---
 

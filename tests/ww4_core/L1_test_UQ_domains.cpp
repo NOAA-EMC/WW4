@@ -17,7 +17,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 // Routine coverage references for anonymous namespace helper functions:
@@ -140,6 +140,13 @@ TEST(UQDomainsTest, PartitionGlobalGridIterativeRefinement) {
   EXPECT_GE(actual_iterations, 1);
   EXPECT_LE(actual_iterations, max_iterations);
   ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
+
+  // Test that setting max_iterations = 0 skips the refinement loop
+  int zero_actual_iterations = -1;
+  std::vector<int> zero_iter_map = partitionGlobalGrid(
+      nx, ny, land_sea_map, num_partitions, 0, &zero_actual_iterations);
+  EXPECT_EQ(zero_actual_iterations, 0);
+  ASSERT_EQ(zero_iter_map.size(), static_cast<size_t>(nx * ny));
 
   std::vector<int> partition_counts(num_partitions + 1, 0);
   int total_sea = 0;

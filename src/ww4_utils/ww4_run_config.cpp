@@ -17,7 +17,7 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_utils/ww4_run_config.h"
@@ -312,6 +312,17 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
           }
         } catch (...) {
           config.maxIterations = 100;
+        }
+      }
+      if (node["convergence_criterion"]) {
+        try {
+          config.convergenceCriterion =
+              node["convergence_criterion"].as<double>();
+          if (config.convergenceCriterion <= 0.0) {
+            config.convergenceCriterion = 1.05;
+          }
+        } catch (...) {
+          config.convergenceCriterion = 1.05;
         }
       }
     }
