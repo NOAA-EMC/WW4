@@ -2251,7 +2251,7 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
       // relative size of largest partition (% of target)
       double largest_rel_pct =
           (static_cast<double>(max_points) / target_size) * 100.0;
-      std::cout << "\r     Iteration " << iters_run
+      std::cout << "\r        Iteration " << iters_run
                 << " : Largest partition = " << std::fixed
                 << std::setprecision(1) << largest_rel_pct << "%" << std::flush;
 
