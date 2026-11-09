@@ -20,7 +20,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 #pragma once
@@ -111,6 +111,8 @@ struct DomainPartition {
  * @param is_global Flag indicating whether grid has longitudinal closure
  * (360-degree wrapping across x = 0 and x = nx - 1) (default: false).
  * @param map_recorder Optional callback invoked with partition_map snapshots.
+ * @param convergence_criterion Factor multiplied with target size to determine
+ * load balance convergence (default: 1.05).
  * @return Vector of size nx * ny containing partition IDs (1 to num_partitions
  * for sea points, 0 for land).
  */
@@ -118,7 +120,8 @@ std::vector<int> partitionGlobalGrid(
     int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
     int max_iterations = 100, int *actual_iterations = nullptr,
     bool is_global = false,
-    std::function<void(std::span<const int>)> map_recorder = nullptr);
+    std::function<void(std::span<const int>)> map_recorder = nullptr,
+    double convergence_criterion = 1.05);
 
 } // namespace UQ_utils
 } // namespace ww4_utils

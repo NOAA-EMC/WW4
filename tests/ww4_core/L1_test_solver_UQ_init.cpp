@@ -406,7 +406,7 @@ TEST(SolverUQInitTest, IntermediateMapsWritesMultipleMaps) {
   resetInternalState();
 }
 
-TEST(SolverUQInitTest, OutputHistogramFinalDomainSizes) {
+TEST(SolverUQInitTest, NoHistogramFinalDomainSizes) {
   resetInternalState();
   std::ostringstream ss;
   getMutableRunConfig().produceStdOut = true;
@@ -418,10 +418,10 @@ TEST(SolverUQInitTest, OutputHistogramFinalDomainSizes) {
 
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
-  EXPECT_NE(output.find("Final domain sizes (mean:"), std::string::npos);
-  EXPECT_NE(output.find("points :"), std::string::npos);
+  EXPECT_EQ(output.find("Final domain sizes"), std::string::npos);
+  EXPECT_EQ(output.find("points :"), std::string::npos);
 
-  // Now test that reading an existing partition file does NOT output histogram
+  // Test that reading an existing partition file also does NOT output histogram
   ss.str("");
   ss.clear();
   EXPECT_NO_THROW(solver_UQ_init(ss));
@@ -449,12 +449,11 @@ TEST(SolverUQInitTest, WriteLocalGridGeneratesLocalUgridFile) {
   EXPECT_NO_THROW(solver_UQ_init(ss));
   std::string output = ss.str();
   EXPECT_NE(output.find("Local domain grid file   :"), std::string::npos);
-  EXPECT_NE(output.find("my_local_test_ugrid_part000.nc"), std::string::npos);
+  EXPECT_NE(output.find("my_local_test.part000.nc"), std::string::npos);
 
   // Read the generated local domain file and verify its contents
   ww4::io::UgridGrid localUgrid;
-  int readStatus =
-      ww4::io::readUQgrid("my_local_test_ugrid_part000.nc", localUgrid);
+  int readStatus = ww4::io::readUQgrid("my_local_test.part000.nc", localUgrid);
   EXPECT_EQ(readStatus, 0);
   EXPECT_GT(localUgrid.nx, 0u);
   EXPECT_GT(localUgrid.ny, 0u);
@@ -471,8 +470,8 @@ TEST(SolverUQInitTest, WriteLocalGridGeneratesLocalUgridFile) {
   EXPECT_TRUE(hasActive);
 
   std::remove("my_local_test_ugrid.nc");
-  std::remove("my_local_test_ugrid.partitions.nc");
-  std::remove("my_local_test_ugrid_part000.nc");
+  std::remove("my_local_test.partitions.nc");
+  std::remove("my_local_test.part000.nc");
   resetInternalState();
 }
 

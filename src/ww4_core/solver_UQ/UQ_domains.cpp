@@ -20,7 +20,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-14
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_UQ/UQ_domains.h"
@@ -227,25 +227,6 @@ std::vector<std::set<int>> determineDomainNeighbors(
   }
 
   return partition_neighbors;
-}
-
-// --- printDomainStats -------------------------------------------------------
-/**
- * @brief Prints diagnostic domain statistics to stdout.
- * @details Outputs highest and lowest grid point counts per partition, and
- * the size of the largest partition as a percentage of the target domain size.
- * @param min_points Lowest number of grid points in a partition.
- * @param max_points Highest number of grid points in a partition.
- * @param largest_pct Percentage of largest partition relative to target.
- * @param target_size Target domain size (total wet points / num_partitions,
- * rounded up).
- */
-void printDomainStats(int min_points, int max_points, double largest_pct,
-                      int target_size) {
-  std::cout << "Domain partition stats: Highest = " << max_points
-            << ", Lowest = " << min_points << ", Largest = " << std::fixed
-            << std::setprecision(1) << largest_pct << "% of target ("
-            << target_size << ")" << std::endl;
 }
 
 // --- resortDomainsBySize ----------------------------------------------------
@@ -2167,7 +2148,8 @@ std::vector<int>
 partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
                     int num_partitions, int max_iterations,
                     int *actual_iterations, bool is_global,
-                    std::function<void(std::span<const int>)> map_recorder) {
+                    std::function<void(std::span<const int>)> map_recorder,
+                    double convergence_criterion) {
   if (actual_iterations) {
     *actual_iterations = 0;
   }
@@ -2195,6 +2177,13 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
   recursiveBisectDomain(0, nx - 1, 0, ny - 1, nx, land_sea_map, num_partitions,
                         1, partition_map);
 
+  // If max_iterations is 0, skip the refinement loop altogether and directly
+  // use the recursive orthogonal bisection.
+  if (max_iterations <= 0) {
+    record_map();
+    return partition_map;
+  }
+
   // Count total wet points and compute target domain size
   int total_wet = 0;
   for (size_t i = 0; i < partition_map.size(); ++i) {
@@ -2213,19 +2202,15 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
   std::vector<int> partition_counts(num_partitions + 1, 0);
   std::vector<std::set<int>> partition_neighbors(num_partitions + 1);
 
-  // Post-bisection initialization: sort domains by size, determine neighbors,
-  // output diagnostics
+  // Post-bisection initialization: sort domains by size, determine neighbors
   resortDomainsBySize(nx, ny, land_sea_map, num_partitions, partition_map,
                       is_global, partition_counts, partition_neighbors);
   record_map();
 
-  int min_points = partition_counts[num_partitions];
   int max_points = partition_counts[1];
-  double largest_pct = (static_cast<double>(max_points) / target_size) * 100.0;
-  printDomainStats(min_points, max_points, largest_pct, target_size);
 
   // Single integrated refinement loop
-  if (num_partitions > 1 && max_iterations > 0) {
+  if (num_partitions > 1) {
     int iters_run = 0;
     for (int iter = 0; iter < max_iterations; ++iter) {
       iters_run++;
@@ -2257,23 +2242,20 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
       dealWithSmallGridExtensions(nx, ny, land_sea_map, num_partitions,
                                   partition_map, is_global, iter);
 
-      // Step 6: Resort the domains and re-establish neighbor information. Write
-      // out test info.
+      // Step 6: Resort the domains and re-establish neighbor information.
       resortDomainsBySize(nx, ny, land_sea_map, num_partitions, partition_map,
                           is_global, partition_counts, partition_neighbors);
 
-      min_points = partition_counts[num_partitions];
       max_points = partition_counts[1];
-      largest_pct = (static_cast<double>(max_points) / target_size) * 100.0;
-      printDomainStats(min_points, max_points, largest_pct, target_size);
 
       record_map();
 
-      // Step 7: Determine if convergence is reached (< 5% larger than target,
-      // or no domains changed)
+      // Step 7: Determine if convergence is reached (< convergence_criterion
+      // times target size, or no domains changed)
       bool no_domains_changed = (partition_map == map_at_start);
-      bool load_balanced = (static_cast<double>(max_points) <
-                            1.05 * static_cast<double>(target_size));
+      bool load_balanced =
+          (static_cast<double>(max_points) <
+           convergence_criterion * static_cast<double>(target_size));
 
       if (load_balanced || no_domains_changed) {
         break;

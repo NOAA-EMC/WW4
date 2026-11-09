@@ -44,7 +44,7 @@ NWS often uses Generative AI (GenAI) for code development and refactoring. Whene
 @author Main Author(s): Aldgisl (AI Persona), Hendrik Tolman
 @author Contributors: Jules (Agentic AI)
 @date Initial, 2026-11-04
-@date Last update : 2026-11-06
+@date Last update : 2026-11-09
 """
 
 from __future__ import annotations
@@ -407,13 +407,17 @@ def annotate_domains(
     color_map: dict[int, int],
     grid_mask: np.ndarray | None = None,
     is_global: bool = False,
+    num_partitions: int = 0,
 ):
     """
-    Annotate each domain with its base-0 domain number and active sea point count (size)
-    in the center of the domain.
+    Annotate each partition with its base-0 partition number and optional active
+    sea point count (size) in the center of the partition. Active point count is
+    printed only if up to 50 partitions are requested.
     """
     ny, nx = domain_slice.shape
     unique_domains = sorted([int(p) for p in np.unique(domain_slice) if p > 0])
+
+    total_partitions = num_partitions if num_partitions > 0 else len(unique_domains)
 
     for domain_id in unique_domains:
         # Identify active points in this domain (excluding non-active points if mask available)
@@ -442,9 +446,12 @@ def annotate_domains(
         else:
             cx = float(np.mean(x_coords)) + 0.5
 
-        # Base 0 domain number
-        domain_num_base0 = domain_id - 1 if domain_id >= 1 else domain_id
-        text_str = f"D{domain_num_base0}\n({size})"
+        # Base 0 partition number
+        part_num_base0 = domain_id - 1 if domain_id >= 1 else domain_id
+        if total_partitions <= 50:
+            text_str = f"P{part_num_base0}\n({size})"
+        else:
+            text_str = f"P{part_num_base0}"
 
         txt = ax.text(
             cx,
@@ -478,6 +485,7 @@ def setup_plot_axes(
     is_global: bool,
     has_boundary: bool,
     has_excluded: bool,
+    num_partitions: int = 0,
 ):
     """
     Render map slice on Cartesian grid using box-fill representation (pcolormesh)
@@ -505,13 +513,14 @@ def setup_plot_axes(
     ax.set_ylabel("Y (Grid rows)")
     ax.set_title(title, fontsize=11, fontweight="bold")
 
-    # Plot domain number (base 0) and size in domain centers
+    # Plot partition number (base 0) and optional size in partition centers
     annotate_domains(
         ax,
         domain_slice,
         color_map,
         grid_mask=grid_mask,
         is_global=is_global,
+        num_partitions=num_partitions,
     )
 
     _ = (has_boundary, has_excluded)
@@ -555,7 +564,7 @@ def plot_single_map(
     fig, ax = plt.subplots(figsize=(9, 6))
 
     step_str = f" [Step {map_idx + 1}/{total_maps}]" if total_maps > 1 else ""
-    title = f"{title_prefix}{step_str}\nDomains: {num_domains}"
+    title = f"{title_prefix}{step_str}\nPartitions: {num_domains}"
 
     setup_plot_axes(
         ax,
@@ -569,6 +578,7 @@ def plot_single_map(
         is_global,
         has_boundary,
         has_excluded,
+        num_partitions=num_domains,
     )
 
     plt.tight_layout()
@@ -619,7 +629,9 @@ def create_animation(
         )
 
         fig, ax = plt.subplots(figsize=(9, 6), facecolor="white")
-        title = f"{title_prefix} [Step {idx + 1}/{total_maps}]\nDomains: {num_domains}"
+        title = (
+            f"{title_prefix} [Step {idx + 1}/{total_maps}]\nPartitions: {num_domains}"
+        )
 
         setup_plot_axes(
             ax,
@@ -633,6 +645,7 @@ def create_animation(
             is_global,
             has_boundary,
             has_excluded,
+            num_partitions=num_domains,
         )
 
         plt.tight_layout()

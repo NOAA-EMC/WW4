@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 #pragma once
@@ -265,7 +265,9 @@ struct HomogeneousDataPoint {
  * @brief Option to write extracted local domain grid to NetCDF file flag.
  * @var RunConfig::maxIterations
  * @brief Maximum number of boundary refinement iterations during domain
- * decomposition.
+ * @var RunConfig::convergenceCriterion
+ * @brief Convergence criterion multiplier relative to target domain size
+ * (default: 1.05). decomposition.
  * @var RunConfig::sourceTerms
  * @brief Source terms flag.
  * @var RunConfig::solver
@@ -330,6 +332,7 @@ struct RunConfig {
   bool intermediateMaps = false;
   bool writeLocalGrid = false;
   int maxIterations = 100;
+  double convergenceCriterion = 1.05;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;
