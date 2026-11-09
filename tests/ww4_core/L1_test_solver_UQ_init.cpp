@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-11-06
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_UQ/solver_UQ_init.h"
@@ -459,15 +459,19 @@ TEST(SolverUQInitTest, WriteLocalGridGeneratesLocalUgridFile) {
   EXPECT_GT(localUgrid.ny, 0u);
   EXPECT_EQ(localUgrid.grid_mask.size(), localUgrid.nx * localUgrid.ny);
 
-  // Verify that the local grid mask contains wet points (1 or 2)
+  // Verify that the local grid mask contains wet points (1 or 2) and halo
+  // points (4)
   bool hasActive = false;
+  bool hasHalo = false;
   for (int m : localUgrid.grid_mask) {
     if (m == 1 || m == 2) {
       hasActive = true;
-      break;
+    } else if (m == 4) {
+      hasHalo = true;
     }
   }
   EXPECT_TRUE(hasActive);
+  EXPECT_TRUE(hasHalo);
 
   std::remove("my_local_test_ugrid.nc");
   std::remove("my_local_test.partitions.nc");

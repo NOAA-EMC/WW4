@@ -308,10 +308,10 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
         try {
           config.maxIterations = node["max_iterations"].as<int>();
           if (config.maxIterations < 0) {
-            config.maxIterations = 100;
+            config.maxIterations = 200;
           }
         } catch (...) {
-          config.maxIterations = 100;
+          config.maxIterations = 200;
         }
       }
       if (node["convergence_criterion"]) {

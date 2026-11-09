@@ -104,7 +104,7 @@ struct DomainPartition {
  * excluded points.
  * @param num_partitions Total number of target partitions (must be >= 1).
  * @param max_iterations Maximum number of iterative refinement passes (default:
- * 100). Set to 0 to bypass iterative refinement.
+ * 200). Set to 0 to bypass iterative refinement.
  * @param[out] actual_iterations Optional pointer to store actual number of
  * refinement passes completed (returns 0 if refinement was bypassed or
  * unnecessary).
@@ -118,7 +118,7 @@ struct DomainPartition {
  */
 std::vector<int> partitionGlobalGrid(
     int nx, int ny, std::span<const int> land_sea_map, int num_partitions,
-    int max_iterations = 100, int *actual_iterations = nullptr,
+    int max_iterations = 200, int *actual_iterations = nullptr,
     bool is_global = false,
     std::function<void(std::span<const int>)> map_recorder = nullptr,
     double convergence_criterion = 1.05);
