@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_SMC/solver_SMC_init.h"
@@ -48,10 +48,9 @@ void solver_SMC_init(std::ostream &os) {
   // Placeholder for reading Spherical Multiple-Cell (SMC) grid geometry and
   // topology:
   // - Open SMC grid file specified in RunConfig (grid.file_path, e.g. NetCDF /
-  // NCZarr).
+  //   NCZarr).
   // - Read active cell descriptors (SMCCell): cell center positions (longitude,
-  // latitude),
-  //   hierarchical refinement levels, and cell area scale factors.
+  //   latitude), hierarchical refinement levels, and cell area scale factors.
   // - Read directional face linkage mapping arrays (i, j face pointers/indices)
   //   governing advective flux boundaries across multi-resolution cells.
   // - Read 1D unified topobathy elevation array for active SMC cells into flat
@@ -60,7 +59,7 @@ void solver_SMC_init(std::ostream &os) {
   // - Read land/sea/ice cell masks and polar boundary cell descriptor lists.
   // - Construct SMCGridData / SharedGridData and expose via std::span views.
 
-  // === Domain decomposition and partition data lifecycle ===================
+  // === Domain decomposition setup ===========================================
   // Placeholder for SMC grid domain decomposition and parallel sub-domain
   // setup:
   // - Check runtime partition mode configuration (grid.partition.mode).
@@ -78,7 +77,21 @@ void solver_SMC_init(std::ostream &os) {
   //   topobathy buffers, ghost/halo boundary cell linkage maps, and
   //   local_to_global_map.
 
-  // === Halo communication setup =============================================
+  // === Extract local grid ===================================================
+  // Placeholder for extracting local sub-domain grid partition:
+  // - Filter global SMC cell arrays and face linkages for cells assigned to
+  //   this rank.
+  // - Identify local domain active cells, boundary cells, and halo cells.
+  // - Populate LocalGridPartition and optional export of local domain grid.
+
+  // === Cross-mapping local and full grids ====================================
+  // Placeholder for establishing index mappings between full grid and local
+  // partition:
+  // - Correlate local SMC cell indices to full grid cell identifiers.
+  // - Construct bidirectional local-to-global and global-to-local indexing
+  // maps.
+
+  // === Set up halo communication ============================================
   // Placeholder for initializing halo communication structures:
   // - Map multi-resolution cell face boundary linkages across sub-domain
   //   partition boundaries.
