@@ -17,7 +17,7 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-11-04
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_utils/ww4_run_config.h"
@@ -81,33 +81,65 @@ TEST(RunConfigTest, NonDefaultConfig) {
 
 // --- MaxIterationsParsingTest -----------------------------------------------
 TEST(RunConfigTest, MaxIterationsParsing) {
-  const std::string filename = "test_max_iterations.yaml";
-  std::ofstream file(filename);
-  file << "grid:\n";
-  file << "  grid_file: test_grid.nc\n";
-  file << "  max_iterations: 42\n";
-  file << "general:\n";
-  file << "  time_step: 3600.0\n";
-  file << "physics:\n";
-  file << "  solver: UQ\n";
-  file << "  linear_input: LN1\n";
-  file << "  input_dissipation: ST4\n";
-  file << "  nonlinear_interactions: NL1\n";
-  file << "  bottom_friction: BT1\n";
-  file << "forcing:\n";
-  file << "  water_levels: none\n";
-  file << "  currents: none\n";
-  file << "  winds: none\n";
-  file << "  ice_concentrations: none\n";
-  file << "  bottom_depth: from_grid\n";
-  file.close();
+  // Case 1: Custom value 42
+  {
+    const std::string filename = "test_max_iterations.yaml";
+    std::ofstream file(filename);
+    file << "grid:\n";
+    file << "  grid_file: test_grid.nc\n";
+    file << "  max_iterations: 42\n";
+    file << "general:\n";
+    file << "  time_step: 3600.0\n";
+    file << "physics:\n";
+    file << "  solver: UQ\n";
+    file << "  linear_input: LN1\n";
+    file << "  input_dissipation: ST4\n";
+    file << "  nonlinear_interactions: NL1\n";
+    file << "  bottom_friction: BT1\n";
+    file << "forcing:\n";
+    file << "  water_levels: none\n";
+    file << "  currents: none\n";
+    file << "  winds: none\n";
+    file << "  ice_concentrations: none\n";
+    file << "  bottom_depth: from_grid\n";
+    file.close();
 
-  const auto config = loadRunConfig(filename, std::cerr);
-  ASSERT_TRUE(config.has_value());
-  EXPECT_EQ(config->maxIterations, 42);
-  EXPECT_DOUBLE_EQ(config->convergenceCriterion, 1.05);
+    const auto config = loadRunConfig(filename, std::cerr);
+    ASSERT_TRUE(config.has_value());
+    EXPECT_EQ(config->maxIterations, 42);
+    EXPECT_DOUBLE_EQ(config->convergenceCriterion, 1.05);
 
-  std::remove(filename.c_str());
+    std::remove(filename.c_str());
+  }
+
+  // Case 2: Default value when omitted is 200
+  {
+    const std::string filename = "test_max_iterations_default.yaml";
+    std::ofstream file(filename);
+    file << "grid:\n";
+    file << "  grid_file: test_grid.nc\n";
+    file << "general:\n";
+    file << "  time_step: 3600.0\n";
+    file << "physics:\n";
+    file << "  solver: UQ\n";
+    file << "  linear_input: LN1\n";
+    file << "  input_dissipation: ST4\n";
+    file << "  nonlinear_interactions: NL1\n";
+    file << "  bottom_friction: BT1\n";
+    file << "forcing:\n";
+    file << "  water_levels: none\n";
+    file << "  currents: none\n";
+    file << "  winds: none\n";
+    file << "  ice_concentrations: none\n";
+    file << "  bottom_depth: from_grid\n";
+    file.close();
+
+    const auto config = loadRunConfig(filename, std::cerr);
+    ASSERT_TRUE(config.has_value());
+    EXPECT_EQ(config->maxIterations, 200);
+
+    std::remove(filename.c_str());
+  }
 }
 
 // --- ConvergenceCriterionParsingTest ----------------------------------------

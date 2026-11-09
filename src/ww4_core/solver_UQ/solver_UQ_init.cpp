@@ -412,6 +412,7 @@ void solver_UQ_init(std::ostream &os) {
     // 2 = Boundary points
     // 3 = Excluded points (wet points outside domain and halo, or boundary
     //     points not adjacent to wet/active calculation points)
+    // 4 = Halo points (depth 2)
     const int loc_nx = reducedGrid.nx_local;
     const int loc_ny = reducedGrid.ny_local;
     const std::size_t loc_total = static_cast<std::size_t>(loc_nx * loc_ny);
@@ -454,8 +455,8 @@ void solver_UQ_init(std::ostream &os) {
     }
 
     std::vector<int> localMask(loc_total, 0);
-    // Initial pass: populate base values and mark non-domain, non-halo wet
-    // points as excluded (3)
+    // Initial pass: populate base values, identify halo points (4),
+    // and mark non-domain, non-halo wet points as excluded (3)
     for (std::size_t i = 0; i < loc_total; ++i) {
       const int g_mask = reducedGrid.land_sea_map[i];
       if (g_mask == 0) {
@@ -465,8 +466,8 @@ void solver_UQ_init(std::ostream &os) {
         // Points belonging to target domain retain original mask (1 or 2)
         localMask[i] = g_mask;
       } else if (isHalo[i]) {
-        // Halo wet or boundary points retain original status
-        localMask[i] = g_mask;
+        // Halo points identified with number 4
+        localMask[i] = 4;
       } else {
         // Wet points outside target domain and outside halo become excluded (3)
         localMask[i] = 3;
