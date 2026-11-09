@@ -21,7 +21,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-29
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_UQ/UQ_one_domain.h"

@@ -1,24 +1,25 @@
-//+ -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-//-- | WAVEWATCH IV, open source, code management by NOAA / NWS |
-//+ -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-//--
-//
-// @file UQ_read_grid.h
-// @brief NetCDF-UGRID 1.0 grid file reader subroutine interface for WAVEWATCH
-// IV.
-// @details Header declaring data structures and the readUQgrid subroutine for
-// reading NetCDF-UGRID grid files in WAVEWATCH IV.
-//
-// @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
-// Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks
-// of the National Weather Service.
-// NWS often uses Generative AI (GenAI) for code development and refactoring.
-// Whenever GenAI is used, NWS requires a full human review of code before it
-// is added to its repositories.
-// @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
-// @author Contributors : Jules (Agentic AI)
-// @date Initial : 2026-10-27
-// @date Last update : 2026-11-03
+/**
+ *       +--------------------------------------------------------+
+ *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
+ *       +--------------------------------------------------------+
+ *
+ * @file UQ_read_grid.h
+ * @brief NetCDF-UGRID 1.0 grid file reader subroutine interface for WAVEWATCH
+ * IV.
+ * @details Header declaring data structures and the readUQgrid subroutine for
+ * reading NetCDF-UGRID grid files in WAVEWATCH IV.
+ *
+ * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
+ * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
+ * Weather Service.
+ * NWS often uses Generative AI (GenAI) for code development and refactoring.
+ * Whenever GenAI is used, NWS requires a full human review of code before it is
+ * added to its repositories.
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI)
+ * @date Initial, 2026-10-27
+ * @date Last update : 2026-11-09
+ */
 
 #ifndef WW4_UQ_READ_GRID_H
 #define WW4_UQ_READ_GRID_H

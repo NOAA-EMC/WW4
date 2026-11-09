@@ -1,23 +1,24 @@
-//+ -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-//-- | WAVEWATCH IV, open source, code management by NOAA / NWS |
-//+ -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-//--
-//
-// @file UQ_read_partition.cpp
-// @brief NetCDF partition map reader implementation for WAVEWATCH IV UQ solver.
-// @details Implementation of reading partition map metadata and data slices
-// using netcdf-c API, with error codes mirroring readUQgrid.
-//
-// @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
-// Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks
-// of the National Weather Service.
-// NWS often uses Generative AI (GenAI) for code development and refactoring.
-// Whenever GenAI is used, NWS requires a full human review of code before it
-// is added to its repositories.
-// @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
-// @author Contributors : Jules (Agentic AI)
-// @date Initial : 2026-11-03
-// @date Last update : 2026-11-05
+/**
+ *       +--------------------------------------------------------+
+ *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
+ *       +--------------------------------------------------------+
+ *
+ * @file UQ_read_partition.cpp
+ * @brief NetCDF partition map reader implementation for WAVEWATCH IV UQ solver.
+ * @details Implementation of reading partition map metadata and data slices
+ * using netcdf-c API, with error codes mirroring readUQgrid.
+ *
+ * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
+ * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
+ * Weather Service.
+ * NWS often uses Generative AI (GenAI) for code development and refactoring.
+ * Whenever GenAI is used, NWS requires a full human review of code before it is
+ * added to its repositories.
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI)
+ * @date Initial, 2026-11-03
+ * @date Last update : 2026-11-09
+ */
 
 #include "UQ_read_partition.h"
 
