@@ -2197,8 +2197,6 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
     return partition_map;
   }
 
-  int target_size = (total_wet + num_partitions - 1) / num_partitions;
-
   std::vector<int> partition_counts(num_partitions + 1, 0);
   std::vector<std::set<int>> partition_neighbors(num_partitions + 1);
 
@@ -2211,6 +2209,7 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
 
   // Single integrated refinement loop
   if (num_partitions > 1) {
+    const int target_size = (total_wet + num_partitions - 1) / num_partitions;
     int iters_run = 0;
     for (int iter = 0; iter < max_iterations; ++iter) {
       iters_run++;
