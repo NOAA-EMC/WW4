@@ -21,7 +21,8 @@
  * @date Last update : 2026-11-09
  */
 
-#include "UQ_write_grid.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_write_grid.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_nc_handle.h"
 
 #include <netcdf.h>
 
@@ -34,43 +35,6 @@
 namespace ww4::io {
 
 namespace {
-
-/**
- * @brief RAII wrapper for NetCDF file handle `ncid`.
- */
-class NcWriteHandle {
-public:
-  explicit NcWriteHandle(const int id) noexcept : ncid_(id) {}
-
-  ~NcWriteHandle() {
-    if (ncid_ >= 0) {
-      nc_close(ncid_);
-    }
-  }
-
-  NcWriteHandle(const NcWriteHandle &) = delete;
-  NcWriteHandle &operator=(const NcWriteHandle &) = delete;
-
-  NcWriteHandle(NcWriteHandle &&other) noexcept : ncid_(other.ncid_) {
-    other.ncid_ = -1;
-  }
-
-  NcWriteHandle &operator=(NcWriteHandle &&other) noexcept {
-    if (this != &other) {
-      if (ncid_ >= 0) {
-        nc_close(ncid_);
-      }
-      ncid_ = other.ncid_;
-      other.ncid_ = -1;
-    }
-    return *this;
-  }
-
-  [[nodiscard]] int get() const noexcept { return ncid_; }
-
-private:
-  int ncid_{-1};
-};
 
 /**
  * @brief Checks NetCDF status code.
@@ -112,7 +76,7 @@ int writeUQgrid(const std::filesystem::path &filepath, const UgridGrid &grid) {
   if (status != NC_NOERR) {
     return 1;
   }
-  const NcWriteHandle nc_handle(raw_ncid);
+  const NcHandle nc_handle(raw_ncid);
   const int ncid = nc_handle.get();
 
   // Define dimensions

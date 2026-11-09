@@ -20,7 +20,8 @@
  * @date Last update : 2026-11-09
  */
 
-#include "UQ_read_partition.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_nc_handle.h"
 
 #include <netcdf.h>
 
@@ -33,43 +34,6 @@
 namespace ww4::io {
 
 namespace {
-
-/**
- * @brief RAII wrapper for NetCDF file handle `ncid`.
- */
-class NcReadHandle {
-public:
-  explicit NcReadHandle(const int id) noexcept : ncid_(id) {}
-
-  ~NcReadHandle() {
-    if (ncid_ >= 0) {
-      nc_close(ncid_);
-    }
-  }
-
-  NcReadHandle(const NcReadHandle &) = delete;
-  NcReadHandle &operator=(const NcReadHandle &) = delete;
-
-  NcReadHandle(NcReadHandle &&other) noexcept : ncid_(other.ncid_) {
-    other.ncid_ = -1;
-  }
-
-  NcReadHandle &operator=(NcReadHandle &&other) noexcept {
-    if (this != &other) {
-      if (ncid_ >= 0) {
-        nc_close(ncid_);
-      }
-      ncid_ = other.ncid_;
-      other.ncid_ = -1;
-    }
-    return *this;
-  }
-
-  [[nodiscard]] int get() const noexcept { return ncid_; }
-
-private:
-  int ncid_{-1};
-};
 
 /**
  * @brief Checks NetCDF status code.
@@ -137,7 +101,7 @@ int readUQpartitionMapNetCDF(const std::filesystem::path &filepath,
   if (open_status != NC_NOERR) {
     return 1;
   }
-  const NcReadHandle nc_handle(raw_ncid);
+  const NcHandle nc_handle(raw_ncid);
   const int ncid = nc_handle.get();
 
   // Return code 2: Failure to read metadata (dimensions, global attributes)

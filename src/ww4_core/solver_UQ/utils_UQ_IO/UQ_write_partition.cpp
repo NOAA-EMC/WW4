@@ -20,7 +20,8 @@
  * @date Last update : 2026-11-09
  */
 
-#include "UQ_write_partition.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_write_partition.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_nc_handle.h"
 
 #include <netcdf.h>
 
@@ -63,6 +64,8 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
     return 1;
   }
 
+  NcHandle handle(raw_ncid);
+
   // Determine face and node dimensions
   const std::size_t num_2d = grid.nx * grid.ny;
   const std::size_t n_faces = (grid.n_faces > 0) ? grid.n_faces : num_2d;
@@ -90,7 +93,6 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
           nc_def_dim(raw_ncid, "nMesh2_node", n_nodes, &dim_nodes)) ||
       !check_nc_part_err(nc_def_dim(raw_ncid, "nMaxMesh2_face_nodes",
                                     max_face_nodes, &dim_max_nodes))) {
-    nc_close(raw_ncid);
     return 2;
   }
 
@@ -111,7 +113,6 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
       !put_attr("bound_source", grid.bound_source) ||
       !put_attr("Conventions", grid.conventions) ||
       !put_attr("history", grid.history)) {
-    nc_close(raw_ncid);
     return 2;
   }
 
@@ -124,7 +125,6 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
       continue;
     }
     if (!put_attr(key.c_str(), val)) {
-      nc_close(raw_ncid);
       return 2;
     }
   }
@@ -132,7 +132,6 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
   // Write number of partitions as an attribute
   if (!check_nc_part_err(nc_put_att_int(raw_ncid, NC_GLOBAL, "num_partitions",
                                         NC_INT, 1, &num_partitions))) {
-    nc_close(raw_ncid);
     return 2;
   }
 
@@ -141,7 +140,6 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
   int var_map = -1;
   if (!check_nc_part_err(nc_def_var(raw_ncid, "partition_map", NC_INT, 3,
                                     dims_map, &var_map))) {
-    nc_close(raw_ncid);
     return 2;
   }
 
@@ -149,24 +147,21 @@ int openUQpartitionMapFile(const std::filesystem::path &filepath,
   if (!check_nc_part_err(nc_put_att_text(
           raw_ncid, var_map, "long_name",
           std::char_traits<char>::length(long_name), long_name))) {
-    nc_close(raw_ncid);
     return 2;
   }
 
   const int fill_val = 0;
   if (!check_nc_part_err(nc_put_att_int(raw_ncid, var_map, "_FillValue", NC_INT,
                                         1, &fill_val))) {
-    nc_close(raw_ncid);
     return 2;
   }
 
   // End definition mode
   if (!check_nc_part_err(nc_enddef(raw_ncid))) {
-    nc_close(raw_ncid);
     return 2;
   }
 
-  ncid = raw_ncid;
+  ncid = handle.release();
   return 0;
 }
 
