@@ -38,17 +38,24 @@ graph TD
     subgraph "External Dependencies"
         YAML[yaml-cpp]
         GTEST[googletest]
+        NETCDF[netcdf-c]
+        HDF5[HDF5]
+        ZLIB[ZLIB]
     end
 
     SA --> CORE
     SA --> UTILS
     CORE --> UTILS
+    CORE --> NETCDF
 
     L1L2 --> CORE
     L1L2 --> UTILS
     L1L2 --> GTEST
 
     UTILS --> YAML
+
+    NETCDF -. optional .-> HDF5
+    NETCDF -. optional .-> ZLIB
 ```
 
 ## Call Structure
@@ -94,6 +101,9 @@ sequenceDiagram
 - **External Dependencies**:
     - `yaml-cpp`: Used for parsing YAML configuration files.
     - `googletest`: Used for unit and integration testing.
+    - `netcdf-c`: Used for NetCDF and UGRID dataset reading and writing.
+    - `HDF5`: Optional dependency for NetCDF-4 support in `netcdf-c`.
+    - `ZLIB`: Optional compression library dependency for NetCDF-4 support in `netcdf-c`.
 
 ## Integrated Runtime Solver Selection
 

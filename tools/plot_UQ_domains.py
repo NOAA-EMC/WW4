@@ -360,7 +360,12 @@ def build_display_array(
     has_boundary = False
     has_excluded = False
 
-    # First apply grid mask features if available
+    # First overlay domain IDs on active calculation areas
+    for p, c_idx in color_map.items():
+        disp[domain_slice == p] = c_idx
+
+    # Then apply grid mask features conforming to gridgen conventions,
+    # ensuring land, boundary points, and excluded points take precedence
     if grid_mask is not None and grid_mask.shape == (ny, nx):
         disp[grid_mask == 0] = VAL_LAND
         if np.any(grid_mask == 2):
@@ -369,10 +374,6 @@ def build_display_array(
         if np.any(grid_mask == 3):
             disp[grid_mask == 3] = VAL_EXCLUDED
             has_excluded = True
-
-    # Then overlay domain IDs
-    for p, c_idx in color_map.items():
-        disp[domain_slice == p] = c_idx
 
     return disp, has_boundary, has_excluded
 
