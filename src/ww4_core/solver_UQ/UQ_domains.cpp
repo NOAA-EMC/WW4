@@ -2247,6 +2247,14 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
 
       max_points = partition_counts[1];
 
+      // Running progress counter to stdout: last completed iteration and
+      // relative size of largest partition (% of target)
+      double largest_rel_pct =
+          (static_cast<double>(max_points) / target_size) * 100.0;
+      std::cout << "\r     Iteration " << iters_run
+                << " : Largest partition = " << std::fixed
+                << std::setprecision(1) << largest_rel_pct << "%" << std::flush;
+
       record_map();
 
       // Step 7: Determine if convergence is reached (< convergence_criterion
@@ -2259,6 +2267,10 @@ partitionGlobalGrid(int nx, int ny, std::span<const int> land_sea_map,
       if (load_balanced || no_domains_changed) {
         break;
       }
+    }
+
+    if (iters_run > 0) {
+      std::cout << std::endl;
     }
 
     if (actual_iterations) {
