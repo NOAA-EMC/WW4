@@ -6,9 +6,8 @@
  * @file UQ_one_domain.cpp
  * @brief Subdomain extraction routine for ultimate quickest (UQ) grids in
  * WAVEWATCH IV (WW4).
- * @details Provides a pure subroutine to extract a reduced grid domain
- * partition including halo cells and associated grid fields for a target
- * partition (derived from WW3 ww3_gspl).
+ * @details Extracts a reduced grid domain partition including halo cells and
+ * associated grid fields for a target partition (derived from WW3 ww3_gspl).
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
@@ -27,39 +26,53 @@
 #include "ww4_core/solver_UQ/UQ_one_domain.h"
 
 #include <algorithm>
+#include <cmath>
+#include <iostream>
 #include <span>
 #include <vector>
 
-namespace ww4_utils {
-namespace UQ_utils {
+namespace ww4_core::solver_UQ {
 
 // --- extractOneDomain -------------------------------------------------------
 
-ReducedGrid extractOneDomain(const FullGrid &full_grid,
-                             std::span<const int> partition_map,
-                             int target_partition, int halo_width,
-                             bool is_global) {
+ww4_utils::LocalGridPartition
+extractOneDomain(const ww4_utils::FullGrid &full_grid,
+                 std::span<const int> partition_map, int target_partition,
+                 int halo_width, bool is_global,
+                 std::vector<int> *sliced_partition_map) {
   // === Section: Input Validation & Initial State Setup ======================
-  ReducedGrid reduced;
-  reduced.target_partition = target_partition;
-  reduced.halo_width = std::max(0, halo_width);
+  ww4_utils::LocalGridPartition localPartition;
+  localPartition.clear();
+  localPartition.gridType = ww4_utils::GridType::Rectangular;
+  localPartition.shared.gridType = ww4_utils::GridType::Rectangular;
+  localPartition.rankId = (target_partition > 0) ? (target_partition - 1) : 0;
+  const int halo = std::max(0, halo_width);
+  localPartition.haloSizeX = halo;
+  localPartition.haloSizeY = halo;
 
-  const int nx = full_grid.nx;
-  const int ny = full_grid.ny;
-  const bool use_global = (is_global || full_grid.is_global);
+  const int nx = static_cast<int>(full_grid.nx);
+  const int ny = static_cast<int>(full_grid.ny);
+
+  bool grid_is_global = is_global;
+  if (const auto *rectData = full_grid.getRectangularData()) {
+    if (rectData->isGlobal) {
+      grid_is_global = true;
+    }
+  }
 
   // Validate global grid dimensions, target partition ID, and partition map
   // size
   if (nx <= 0 || ny <= 0 || target_partition <= 0 ||
       partition_map.size() != static_cast<size_t>(nx * ny)) {
-    return reduced;
+    return localPartition;
   }
 
   // === Section: Bounding Box & Occupied Columns Search ====================
   // Scan global 2D grid to record latitudinal row bounds (y_min, y_max) and
   // gather all longitudinal x-column indices containing target_partition cells
   std::vector<int> present_x_vec;
-  int y_min = ny, y_max = -1;
+  int y_min = ny;
+  int y_max = -1;
 
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
@@ -75,7 +88,7 @@ ReducedGrid extractOneDomain(const FullGrid &full_grid,
   // If target_partition is not found anywhere in the partition map, return
   // empty reduced grid
   if (present_x_vec.empty() || y_max < y_min) {
-    return reduced;
+    return localPartition;
   }
 
   // Sort and remove duplicate x-column indices
@@ -84,11 +97,10 @@ ReducedGrid extractOneDomain(const FullGrid &full_grid,
                       present_x_vec.end());
 
   int x_start = 0;
-  int x_end = 0;
   int nx_loc = 0;
 
   // === Section: Longitudinal Bounds & Halo Expansion ========================
-  if (use_global && nx > 1) {
+  if (grid_is_global && nx > 1) {
     // For global grids (360-degree longitudinal closure): analyze gap between
     // consecutive occupied x-columns to detect wraparound across x = 0 and x =
     // nx - 1.
@@ -112,16 +124,14 @@ ReducedGrid extractOneDomain(const FullGrid &full_grid,
       // Partition is contiguous in x without wrapping across boundary
       int x_min_occ = present_x_vec[0];
       int x_max_occ = present_x_vec[m - 1];
-      int x_start_raw = x_min_occ - reduced.halo_width;
-      int x_end_raw = x_max_occ + reduced.halo_width;
+      int x_start_raw = x_min_occ - halo;
+      int x_end_raw = x_max_occ + halo;
       nx_loc = x_end_raw - x_start_raw + 1;
       if (nx_loc >= nx) {
         nx_loc = nx;
         x_start = 0;
-        x_end = nx - 1;
       } else {
         x_start = (x_start_raw % nx + nx) % nx;
-        x_end = (x_end_raw % nx + nx) % nx;
       }
     } else {
       // Partition wraps across 360-degree longitudinal boundary (x = 0 / x = nx
@@ -129,48 +139,46 @@ ReducedGrid extractOneDomain(const FullGrid &full_grid,
       int x_start_occ = present_x_vec[max_gap_idx + 1];
       int x_end_occ = present_x_vec[max_gap_idx];
       int occ_span = (x_end_occ + nx) - x_start_occ + 1;
-      nx_loc = occ_span + 2 * reduced.halo_width;
+      nx_loc = occ_span + 2 * halo;
       if (nx_loc >= nx) {
         nx_loc = nx;
         x_start = 0;
-        x_end = nx - 1;
       } else {
-        x_start = ((x_start_occ - reduced.halo_width) % nx + nx) % nx;
-        x_end = ((x_end_occ + reduced.halo_width) % nx + nx) % nx;
+        x_start = ((x_start_occ - halo) % nx + nx) % nx;
       }
     }
   } else {
     // Standard regional / non-global grid bounding box determination
     int x_min_occ = present_x_vec[0];
     int x_max_occ = present_x_vec.back();
-    x_start = std::max(0, x_min_occ - reduced.halo_width);
-    x_end = std::min(nx - 1, x_max_occ + reduced.halo_width);
+    x_start = std::max(0, x_min_occ - halo);
+    int x_end = std::min(nx - 1, x_max_occ + halo);
     nx_loc = x_end - x_start + 1;
   }
 
   // === Section: Latitudinal Bounds & Local Dimensions Setup =================
-  int y_start = std::max(0, y_min - reduced.halo_width);
-  int y_end = std::min(ny - 1, y_max + reduced.halo_width);
+  int y_start = std::max(0, y_min - halo);
+  int y_end = std::min(ny - 1, y_max + halo);
 
-  reduced.global_x_min = x_start;
-  reduced.global_y_min = y_start;
-  reduced.global_x_max = x_end;
-  reduced.global_y_max = y_end;
+  localPartition.localNx = static_cast<std::size_t>(nx_loc);
+  localPartition.localNy = static_cast<std::size_t>(y_end - y_start + 1);
+  localPartition.localNumNodes =
+      localPartition.localNx * localPartition.localNy;
 
-  reduced.nx_local = nx_loc;
-  reduced.ny_local = y_end - y_start + 1;
-
-  const int nx_loc_sz = reduced.nx_local;
-  const int ny_loc = reduced.ny_local;
+  const int nx_loc_sz = nx_loc;
+  const int ny_loc = y_end - y_start + 1;
   const size_t total_local_cells = static_cast<size_t>(nx_loc_sz * ny_loc);
 
   // === Section: 2D Field Slicing ============================================
-  // Slice 2D partition map and land-sea status mask into row-major local grid
-  reduced.land_sea_map.resize(total_local_cells, 0);
-  reduced.partition_map.resize(total_local_cells, 0);
+  localPartition.landMask.resize(total_local_cells, 0);
+  localPartition.localToGlobalMap.resize(total_local_cells, 0);
 
-  const bool has_ls =
-      (full_grid.land_sea_map.size() == static_cast<size_t>(nx * ny));
+  if (sliced_partition_map != nullptr) {
+    sliced_partition_map->resize(total_local_cells, 0);
+  }
+
+  const auto land_mask_span = full_grid.getLandMask();
+  const bool has_ls = (land_mask_span.size() == static_cast<size_t>(nx * ny));
 
   for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
     int gy = y_start + y_loc;
@@ -179,93 +187,102 @@ ReducedGrid extractOneDomain(const FullGrid &full_grid,
       int g_idx = gy * nx + gx;
       int l_idx = y_loc * nx_loc_sz + x_loc;
 
-      reduced.partition_map[l_idx] = partition_map[g_idx];
+      localPartition.localToGlobalMap[l_idx] = static_cast<std::size_t>(g_idx);
+      if (sliced_partition_map != nullptr) {
+        (*sliced_partition_map)[l_idx] = partition_map[g_idx];
+      }
       if (has_ls) {
-        reduced.land_sea_map[l_idx] = full_grid.land_sea_map[g_idx];
+        localPartition.landMask[l_idx] = land_mask_span[g_idx];
       }
     }
   }
+  localPartition.shared.landMask = localPartition.landMask;
 
   // Slice unified topobathy elevation field
-  if (full_grid.topobathy.size() == static_cast<size_t>(nx * ny)) {
-    reduced.topobathy.resize(total_local_cells, 0.0);
+  const auto topobathy_span = full_grid.getTopobathy();
+  if (topobathy_span.size() == static_cast<size_t>(nx * ny)) {
+    localPartition.topobathy.resize(total_local_cells, 0.0);
     for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
       int gy = y_start + y_loc;
       for (int x_loc = 0; x_loc < nx_loc_sz; ++x_loc) {
         int gx = (x_start + x_loc) % nx;
-        reduced.topobathy[y_loc * nx_loc_sz + x_loc] =
-            full_grid.topobathy[gy * nx + gx];
+        localPartition.topobathy[y_loc * nx_loc_sz + x_loc] =
+            topobathy_span[gy * nx + gx];
       }
     }
+    localPartition.shared.topobathy = localPartition.topobathy;
   }
 
   // Slice subgrid obstruction factors X and Y
-  if (full_grid.subgrid_obs_x.size() == static_cast<size_t>(nx * ny)) {
-    reduced.subgrid_obs_x.resize(total_local_cells, 0.0);
+  const auto obs_x_span = full_grid.shared.getObstructionX();
+  if (obs_x_span.size() == static_cast<size_t>(nx * ny)) {
+    localPartition.shared.obstructionX.resize(total_local_cells, 0.0);
     for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
       int gy = y_start + y_loc;
       for (int x_loc = 0; x_loc < nx_loc_sz; ++x_loc) {
         int gx = (x_start + x_loc) % nx;
-        reduced.subgrid_obs_x[y_loc * nx_loc_sz + x_loc] =
-            full_grid.subgrid_obs_x[gy * nx + gx];
+        localPartition.shared.obstructionX[y_loc * nx_loc_sz + x_loc] =
+            obs_x_span[gy * nx + gx];
       }
     }
   }
 
-  if (full_grid.subgrid_obs_y.size() == static_cast<size_t>(nx * ny)) {
-    reduced.subgrid_obs_y.resize(total_local_cells, 0.0);
+  const auto obs_y_span = full_grid.shared.getObstructionY();
+  if (obs_y_span.size() == static_cast<size_t>(nx * ny)) {
+    localPartition.shared.obstructionY.resize(total_local_cells, 0.0);
     for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
       int gy = y_start + y_loc;
       for (int x_loc = 0; x_loc < nx_loc_sz; ++x_loc) {
         int gx = (x_start + x_loc) % nx;
-        reduced.subgrid_obs_y[y_loc * nx_loc_sz + x_loc] =
-            full_grid.subgrid_obs_y[gy * nx + gx];
+        localPartition.shared.obstructionY[y_loc * nx_loc_sz + x_loc] =
+            obs_y_span[gy * nx + gx];
       }
     }
   }
 
   // === Section: Spatial Coordinate Slicing ==================================
-  // Slice longitude coordinates (supporting 1D vector or 2D array
-  // representation)
-  if (full_grid.longitude.size() == static_cast<size_t>(nx)) {
-    reduced.longitude.resize(nx_loc_sz);
+  const auto lon_span = full_grid.getXCoordinates();
+  if (lon_span.size() == static_cast<size_t>(nx)) {
+    localPartition.xCoordinates.resize(nx_loc_sz);
     for (int x_loc = 0; x_loc < nx_loc_sz; ++x_loc) {
       int gx = (x_start + x_loc) % nx;
-      reduced.longitude[x_loc] = full_grid.longitude[gx];
+      localPartition.xCoordinates[x_loc] = lon_span[gx];
     }
-  } else if (full_grid.longitude.size() == static_cast<size_t>(nx * ny)) {
-    reduced.longitude.resize(total_local_cells);
+    localPartition.shared.xCoordinates = localPartition.xCoordinates;
+  } else if (lon_span.size() == static_cast<size_t>(nx * ny)) {
+    localPartition.xCoordinates.resize(total_local_cells);
     for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
       int gy = y_start + y_loc;
       for (int x_loc = 0; x_loc < nx_loc_sz; ++x_loc) {
         int gx = (x_start + x_loc) % nx;
-        reduced.longitude[y_loc * nx_loc_sz + x_loc] =
-            full_grid.longitude[gy * nx + gx];
+        localPartition.xCoordinates[y_loc * nx_loc_sz + x_loc] =
+            lon_span[gy * nx + gx];
       }
     }
+    localPartition.shared.xCoordinates = localPartition.xCoordinates;
   }
 
-  // Slice latitude coordinates (supporting 1D vector or 2D array
-  // representation)
-  if (full_grid.latitude.size() == static_cast<size_t>(ny)) {
-    reduced.latitude.resize(ny_loc);
+  const auto lat_span = full_grid.getYCoordinates();
+  if (lat_span.size() == static_cast<size_t>(ny)) {
+    localPartition.yCoordinates.resize(ny_loc);
     for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
-      reduced.latitude[y_loc] = full_grid.latitude[y_start + y_loc];
+      localPartition.yCoordinates[y_loc] = lat_span[y_start + y_loc];
     }
-  } else if (full_grid.latitude.size() == static_cast<size_t>(nx * ny)) {
-    reduced.latitude.resize(total_local_cells);
+    localPartition.shared.yCoordinates = localPartition.yCoordinates;
+  } else if (lat_span.size() == static_cast<size_t>(nx * ny)) {
+    localPartition.yCoordinates.resize(total_local_cells);
     for (int y_loc = 0; y_loc < ny_loc; ++y_loc) {
       int gy = y_start + y_loc;
       for (int x_loc = 0; x_loc < nx_loc_sz; ++x_loc) {
         int gx = (x_start + x_loc) % nx;
-        reduced.latitude[y_loc * nx_loc_sz + x_loc] =
-            full_grid.latitude[gy * nx + gx];
+        localPartition.yCoordinates[y_loc * nx_loc_sz + x_loc] =
+            lat_span[gy * nx + gx];
       }
     }
+    localPartition.shared.yCoordinates = localPartition.yCoordinates;
   }
 
-  return reduced;
+  return localPartition;
 }
 
-} // namespace UQ_utils
-} // namespace ww4_utils
+} // namespace ww4_core::solver_UQ

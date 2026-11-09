@@ -21,8 +21,7 @@
  * @date Last update : 2026-11-09
  */
 
-#ifndef WW4_UQ_WRITE_GRID_H
-#define WW4_UQ_WRITE_GRID_H
+#pragma once
 
 #include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.h"
 #include <filesystem>
@@ -54,5 +53,3 @@ namespace ww4::io {
                               const UgridGrid &grid);
 
 } // namespace ww4::io
-
-#endif // WW4_UQ_WRITE_GRID_H

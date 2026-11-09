@@ -26,86 +26,11 @@
 
 #pragma once
 
+#include "ww4_utils/spatial_grid.h"
 #include <span>
 #include <vector>
 
-namespace ww4_utils {
-namespace UQ_utils {
-
-// --- FullGrid ---------------------------------------------------------------
-/**
- * @struct FullGrid
- * @brief Structure representing a full global grid dataset and associated
- * spatial fields.
- * @details Serves as an input container for global spatial grid parameters,
- * land-sea status mask, 1D or 2D geographic coordinates, unified topobathy
- * elevation, and subgrid obstruction factors prior to sub-domain extraction.
- */
-struct FullGrid {
-  int nx{0}; ///< Total longitudinal grid column count (x-dimension).
-  int ny{0}; ///< Total latitudinal grid row count (y-dimension).
-  bool is_global{false}; ///< Flag indicating whether grid has longitudinal
-                         ///< closure (360-degree wrapping across x = 0 and x =
-                         ///< nx - 1).
-  std::vector<int>
-      land_sea_map; ///< 2D land-sea status mask (row-major order, size nx * ny,
-                    ///< > 0 for active sea cells, <= 0 for land).
-  std::vector<double>
-      longitude; ///< 1D longitude coordinates (size nx) or 2D (size nx * ny).
-  std::vector<double>
-      latitude; ///< 1D latitude coordinates (size ny) or 2D (size nx * ny).
-  std::vector<double> topobathy; ///< Unified topobathy elevation array in
-                                 ///< meters (row-major order, size nx * ny).
-  std::vector<double>
-      subgrid_obs_x; ///< Optional subgrid obstruction factors in X direction
-                     ///< (row-major order, size nx * ny).
-  std::vector<double>
-      subgrid_obs_y; ///< Optional subgrid obstruction factors in Y direction
-                     ///< (row-major order, size nx * ny).
-};
-
-// --- ReducedGrid ------------------------------------------------------------
-/**
- * @struct ReducedGrid
- * @brief Structure representing a reduced sub-domain grid partition dataset.
- * @details Holds extracted spatial grid dimensions, global bounding box
- * coordinates, halo width metadata, and sliced local grid fields (land-sea
- * mask, partition IDs, geographic coordinates, topobathy elevation, and
- * subgrid obstructions) tailored for a target MPI partition.
- */
-struct ReducedGrid {
-  int target_partition{0}; ///< Target 1-based partition ID extracted.
-  int nx_local{0};         ///< Local grid column count including halo cells.
-  int ny_local{0};         ///< Local grid row count including halo cells.
-  int global_x_min{0};     ///< 0-based global x index of local origin (0,0).
-  int global_y_min{0};     ///< 0-based global y index of local origin (0,0).
-  int global_x_max{
-      0}; ///< 0-based global x index of local (nx_local-1, ny_local-1).
-  int global_y_max{
-      0}; ///< 0-based global y index of local (nx_local-1, ny_local-1).
-  int halo_width{0}; ///< Halo overlap width in grid cells.
-  std::vector<int>
-      land_sea_map; ///< Sliced local land-sea status mask
-                    ///< (row-major order, size nx_local * ny_local).
-  std::vector<int>
-      partition_map; ///< Sliced local partition map IDs
-                     ///< (row-major order, size nx_local * ny_local).
-  std::vector<double>
-      longitude; ///< Sliced local longitude coordinates
-                 ///< (size nx_local for 1D, nx_local * ny_local for 2D).
-  std::vector<double>
-      latitude; ///< Sliced local latitude coordinates
-                ///< (size ny_local for 1D, nx_local * ny_local for 2D).
-  std::vector<double>
-      topobathy; ///< Sliced local unified topobathy elevation
-                 ///< (row-major order, size nx_local * ny_local).
-  std::vector<double>
-      subgrid_obs_x; ///< Sliced local subgrid obstruction X
-                     ///< (row-major order, size nx_local * ny_local).
-  std::vector<double>
-      subgrid_obs_y; ///< Sliced local subgrid obstruction Y
-                     ///< (row-major order, size nx_local * ny_local).
-};
+namespace ww4_core::solver_UQ {
 
 // --- extractOneDomain -------------------------------------------------------
 /**
@@ -115,13 +40,13 @@ struct ReducedGrid {
  * bounding box by halo_width cells in all cardinal directions (clamped to
  * global grid boundaries or wrapped across 360-degree longitudinal boundary if
  * is_global is true), and slices all grid field datasets from full_grid into
- * reduced_grid.
+ * local partition.
  *
  * Sub-Domain Extraction Algorithm Lifecycle:
  * Input Validation & Initial State Setup:
  *   Validates global grid dimensions (nx, ny > 0), target partition ID (> 0),
  *   and partition map array size. Checks whether global longitudinal closure
- *   flag is set either via full_grid.is_global or the is_global parameter.
+ *   flag is set either via full_grid or the is_global parameter.
  *
  * Bounding Box Search & Occupied Column Scan:
  *   Scans global 2D partition map for cells matching target_partition.
@@ -163,13 +88,20 @@ struct ReducedGrid {
  * @param halo_width Halo overlap width in grid cells (default: 1).
  * @param is_global Flag indicating whether grid has longitudinal closure
  * (360-degree wrapping across x = 0 and x = nx - 1) (default: false).
- * @return ReducedGrid structure containing extracted local sub-domain grid and
- * sliced data.
+ * @param[out] sliced_partition_map Optional vector to receive sliced local
+ * partition IDs (size nx_local * ny_local).
+ * @return LocalGridPartition structure containing extracted local sub-domain
+ * grid and sliced data.
  */
-ReducedGrid extractOneDomain(const FullGrid &full_grid,
-                             std::span<const int> partition_map,
-                             int target_partition, int halo_width = 1,
-                             bool is_global = false);
+ww4_utils::LocalGridPartition
+extractOneDomain(const ww4_utils::FullGrid &full_grid,
+                 std::span<const int> partition_map, int target_partition,
+                 int halo_width = 1, bool is_global = false,
+                 std::vector<int> *sliced_partition_map = nullptr);
 
-} // namespace UQ_utils
-} // namespace ww4_utils
+} // namespace ww4_core::solver_UQ
+
+namespace ww4_utils::UQ_utils {
+// Backward-compatibility namespace alias
+using ww4_core::solver_UQ::extractOneDomain;
+} // namespace ww4_utils::UQ_utils

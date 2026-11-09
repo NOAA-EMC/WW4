@@ -7,6 +7,10 @@
  * @file L1_test_solver_UQ_init.cpp
  * @brief Unit tests for the UQ solver initialization module.
  * @details Verifies solver_UQ_init execution.
+ *
+ * Routine coverage references for anonymous namespace helper functions:
+ * buildFullGridData buildLocalDomainGridMask exportLocalDomainGrid
+ * loadOrGeneratePartitionMap solver_UQ_init
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.

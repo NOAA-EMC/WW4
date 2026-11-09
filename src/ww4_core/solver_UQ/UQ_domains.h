@@ -29,8 +29,7 @@
 #include <span>
 #include <vector>
 
-namespace ww4_utils {
-namespace UQ_utils {
+namespace ww4_core::solver_UQ {
 
 // --- DomainPartition --------------------------------------------------------
 /**
@@ -123,5 +122,10 @@ std::vector<int> partitionGlobalGrid(
     std::function<void(std::span<const int>)> map_recorder = nullptr,
     double convergence_criterion = 1.05);
 
-} // namespace UQ_utils
-} // namespace ww4_utils
+} // namespace ww4_core::solver_UQ
+
+namespace ww4_utils::UQ_utils {
+// Backward-compatibility namespace alias
+using ww4_core::solver_UQ::DomainPartition;
+using ww4_core::solver_UQ::partitionGlobalGrid;
+} // namespace ww4_utils::UQ_utils

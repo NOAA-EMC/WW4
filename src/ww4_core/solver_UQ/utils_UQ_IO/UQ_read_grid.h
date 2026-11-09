@@ -21,8 +21,7 @@
  * @date Last update : 2026-11-09
  */
 
-#ifndef WW4_UQ_READ_GRID_H
-#define WW4_UQ_READ_GRID_H
+#pragma once
 
 #include <cstdint>
 #include <filesystem>
@@ -181,5 +180,3 @@ struct UgridGrid {
 void printGridMetadata(const UgridGrid &grid, std::ostream &os);
 
 } // namespace ww4::io
-
-#endif // WW4_UQ_READ_GRID_H

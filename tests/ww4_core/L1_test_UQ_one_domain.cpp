@@ -18,7 +18,7 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * ww3_gspl by Hendrik L. Tolman.
  * @date Initial, 2026-10-29
- * @date Last update : 2026-11-03
+ * @date Last update : 2026-11-09
  */
 
 // Routine coverage references for anonymous namespace helper functions:
@@ -31,9 +31,10 @@
 
 #include "ww4_core/solver_UQ/UQ_domains.h"
 #include "ww4_core/solver_UQ/UQ_one_domain.h"
+#include "ww4_utils/spatial_grid.h"
 
 using namespace ww4_utils;
-using namespace ww4_utils::UQ_utils;
+using namespace ww4_core::solver_UQ;
 
 TEST(UQOneDomainTest, ExtractOneDomainBasic) {
   int nx = 10;
@@ -41,79 +42,94 @@ TEST(UQOneDomainTest, ExtractOneDomainBasic) {
   FullGrid full;
   full.nx = nx;
   full.ny = ny;
-  full.land_sea_map.assign(nx * ny, 1);
-  full.land_sea_map[0] = 0; // land
+  full.landMask.assign(nx * ny, 1);
+  full.landMask[0] = 0; // land
+  full.shared.landMask = full.landMask;
 
   // 1D Coordinates
-  full.longitude.resize(nx);
+  full.xCoordinates.resize(nx);
   for (int x = 0; x < nx; ++x) {
-    full.longitude[x] = -100.0 + x * 0.5;
+    full.xCoordinates[x] = -100.0 + x * 0.5;
   }
-  full.latitude.resize(ny);
+  full.shared.xCoordinates = full.xCoordinates;
+  full.yCoordinates.resize(ny);
   for (int y = 0; y < ny; ++y) {
-    full.latitude[y] = 20.0 + y * 0.5;
+    full.yCoordinates[y] = 20.0 + y * 0.5;
   }
+  full.shared.yCoordinates = full.yCoordinates;
 
   // Topobathy and subgrid obstruction
   full.topobathy.resize(nx * ny);
-  full.subgrid_obs_x.resize(nx * ny, 1.0);
-  full.subgrid_obs_y.resize(nx * ny, 1.0);
+  full.shared.obstructionX.resize(nx * ny, 1.0);
+  full.shared.obstructionY.resize(nx * ny, 1.0);
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
       full.topobathy[y * nx + x] = -10.0 - (y * nx + x);
     }
   }
+  full.shared.topobathy = full.topobathy;
 
   int num_partitions = 2;
   std::vector<int> partition_map =
-      partitionGlobalGrid(nx, ny, full.land_sea_map, num_partitions);
+      partitionGlobalGrid(nx, ny, full.landMask, num_partitions);
 
   ASSERT_EQ(partition_map.size(), static_cast<size_t>(nx * ny));
 
   // Extract Partition 1 with halo = 1
-  ReducedGrid red1 = extractOneDomain(full, partition_map, 1, 1);
+  std::vector<int> sliced_map;
+  LocalGridPartition red1 =
+      extractOneDomain(full, partition_map, 1, 1, false, &sliced_map);
 
-  EXPECT_EQ(red1.target_partition, 1);
-  EXPECT_EQ(red1.halo_width, 1);
-  EXPECT_GT(red1.nx_local, 0);
-  EXPECT_GT(red1.ny_local, 0);
-  EXPECT_LE(red1.nx_local, nx);
-  EXPECT_LE(red1.ny_local, ny);
+  EXPECT_EQ(red1.rankId, 0);
+  EXPECT_EQ(red1.haloSizeX, 1u);
+  EXPECT_EQ(red1.haloSizeY, 1u);
+  EXPECT_GT(red1.localNx, 0u);
+  EXPECT_GT(red1.localNy, 0u);
+  EXPECT_LE(red1.localNx, static_cast<std::size_t>(nx));
+  EXPECT_LE(red1.localNy, static_cast<std::size_t>(ny));
 
   // Check 1D coordinates size in reduced grid
-  EXPECT_EQ(red1.longitude.size(), static_cast<size_t>(red1.nx_local));
-  EXPECT_EQ(red1.latitude.size(), static_cast<size_t>(red1.ny_local));
+  EXPECT_EQ(red1.xCoordinates.size(), red1.localNx);
+  EXPECT_EQ(red1.yCoordinates.size(), red1.localNy);
 
   // Verify coordinate values match global slice
-  for (int x_loc = 0; x_loc < red1.nx_local; ++x_loc) {
-    int gx = red1.global_x_min + x_loc;
-    EXPECT_DOUBLE_EQ(red1.longitude[x_loc], full.longitude[gx]);
+  // Find global bounds from localToGlobalMap
+  ASSERT_FALSE(red1.localToGlobalMap.empty());
+  std::size_t g_origin = red1.localToGlobalMap[0];
+  int gx_min = static_cast<int>(g_origin % nx);
+  int gy_min = static_cast<int>(g_origin / nx);
+
+  for (std::size_t x_loc = 0; x_loc < red1.localNx; ++x_loc) {
+    int gx = gx_min + static_cast<int>(x_loc);
+    EXPECT_DOUBLE_EQ(red1.xCoordinates[x_loc], full.xCoordinates[gx]);
   }
-  for (int y_loc = 0; y_loc < red1.ny_local; ++y_loc) {
-    int gy = red1.global_y_min + y_loc;
-    EXPECT_DOUBLE_EQ(red1.latitude[y_loc], full.latitude[gy]);
+  for (std::size_t y_loc = 0; y_loc < red1.localNy; ++y_loc) {
+    int gy = gy_min + static_cast<int>(y_loc);
+    EXPECT_DOUBLE_EQ(red1.yCoordinates[y_loc], full.yCoordinates[gy]);
   }
 
-  // Verify field slicing values (topobathy, land_sea_map, partition_map)
-  size_t loc_size = static_cast<size_t>(red1.nx_local * red1.ny_local);
-  ASSERT_EQ(red1.land_sea_map.size(), loc_size);
-  ASSERT_EQ(red1.partition_map.size(), loc_size);
+  // Verify field slicing values (topobathy, landMask, sliced partition map)
+  size_t loc_size = red1.localNx * red1.localNy;
+  ASSERT_EQ(red1.landMask.size(), loc_size);
+  ASSERT_EQ(sliced_map.size(), loc_size);
   ASSERT_EQ(red1.topobathy.size(), loc_size);
-  ASSERT_EQ(red1.subgrid_obs_x.size(), loc_size);
-  ASSERT_EQ(red1.subgrid_obs_y.size(), loc_size);
+  ASSERT_EQ(red1.shared.obstructionX.size(), loc_size);
+  ASSERT_EQ(red1.shared.obstructionY.size(), loc_size);
 
-  for (int y_loc = 0; y_loc < red1.ny_local; ++y_loc) {
-    int gy = red1.global_y_min + y_loc;
-    for (int x_loc = 0; x_loc < red1.nx_local; ++x_loc) {
-      int gx = red1.global_x_min + x_loc;
+  for (std::size_t y_loc = 0; y_loc < red1.localNy; ++y_loc) {
+    int gy = gy_min + static_cast<int>(y_loc);
+    for (std::size_t x_loc = 0; x_loc < red1.localNx; ++x_loc) {
+      int gx = gx_min + static_cast<int>(x_loc);
       int g_idx = gy * nx + gx;
-      int l_idx = y_loc * red1.nx_local + x_loc;
+      std::size_t l_idx = y_loc * red1.localNx + x_loc;
 
-      EXPECT_EQ(red1.partition_map[l_idx], partition_map[g_idx]);
-      EXPECT_EQ(red1.land_sea_map[l_idx], full.land_sea_map[g_idx]);
+      EXPECT_EQ(sliced_map[l_idx], partition_map[g_idx]);
+      EXPECT_EQ(red1.landMask[l_idx], full.landMask[g_idx]);
       EXPECT_DOUBLE_EQ(red1.topobathy[l_idx], full.topobathy[g_idx]);
-      EXPECT_DOUBLE_EQ(red1.subgrid_obs_x[l_idx], full.subgrid_obs_x[g_idx]);
-      EXPECT_DOUBLE_EQ(red1.subgrid_obs_y[l_idx], full.subgrid_obs_y[g_idx]);
+      EXPECT_DOUBLE_EQ(red1.shared.obstructionX[l_idx],
+                       full.shared.obstructionX[g_idx]);
+      EXPECT_DOUBLE_EQ(red1.shared.obstructionY[l_idx],
+                       full.shared.obstructionY[g_idx]);
     }
   }
 }
@@ -124,37 +140,45 @@ TEST(UQOneDomainTest, ExtractOneDomain2DCoordinates) {
   FullGrid full;
   full.nx = nx;
   full.ny = ny;
-  full.land_sea_map.assign(nx * ny, 1);
+  full.landMask.assign(nx * ny, 1);
+  full.shared.landMask = full.landMask;
 
   // 2D curvilinear coordinates
-  full.longitude.resize(nx * ny);
-  full.latitude.resize(nx * ny);
+  full.xCoordinates.resize(nx * ny);
+  full.yCoordinates.resize(nx * ny);
   for (int y = 0; y < ny; ++y) {
     for (int x = 0; x < nx; ++x) {
       int idx = y * nx + x;
-      full.longitude[idx] = 10.0 + x * 0.1 + y * 0.01;
-      full.latitude[idx] = 40.0 + y * 0.1 + x * 0.01;
+      full.xCoordinates[idx] = 10.0 + x * 0.1 + y * 0.01;
+      full.yCoordinates[idx] = 40.0 + y * 0.1 + x * 0.01;
     }
   }
+  full.shared.xCoordinates = full.xCoordinates;
+  full.shared.yCoordinates = full.yCoordinates;
 
   std::vector<int> partition_map =
-      partitionGlobalGrid(nx, ny, full.land_sea_map, 2);
+      partitionGlobalGrid(nx, ny, full.landMask, 2);
 
-  ReducedGrid red = extractOneDomain(full, partition_map, 1, 0); // zero halo
+  LocalGridPartition red =
+      extractOneDomain(full, partition_map, 1, 0); // zero halo
 
-  size_t loc_size = static_cast<size_t>(red.nx_local * red.ny_local);
-  ASSERT_EQ(red.longitude.size(), loc_size);
-  ASSERT_EQ(red.latitude.size(), loc_size);
+  size_t loc_size = red.localNx * red.localNy;
+  ASSERT_EQ(red.xCoordinates.size(), loc_size);
+  ASSERT_EQ(red.yCoordinates.size(), loc_size);
 
-  for (int y_loc = 0; y_loc < red.ny_local; ++y_loc) {
-    int gy = red.global_y_min + y_loc;
-    for (int x_loc = 0; x_loc < red.nx_local; ++x_loc) {
-      int gx = red.global_x_min + x_loc;
+  std::size_t g_origin = red.localToGlobalMap[0];
+  int gx_min = static_cast<int>(g_origin % nx);
+  int gy_min = static_cast<int>(g_origin / nx);
+
+  for (std::size_t y_loc = 0; y_loc < red.localNy; ++y_loc) {
+    int gy = gy_min + static_cast<int>(y_loc);
+    for (std::size_t x_loc = 0; x_loc < red.localNx; ++x_loc) {
+      int gx = gx_min + static_cast<int>(x_loc);
       int g_idx = gy * nx + gx;
-      int l_idx = y_loc * red.nx_local + x_loc;
+      std::size_t l_idx = y_loc * red.localNx + x_loc;
 
-      EXPECT_DOUBLE_EQ(red.longitude[l_idx], full.longitude[g_idx]);
-      EXPECT_DOUBLE_EQ(red.latitude[l_idx], full.latitude[g_idx]);
+      EXPECT_DOUBLE_EQ(red.xCoordinates[l_idx], full.xCoordinates[g_idx]);
+      EXPECT_DOUBLE_EQ(red.yCoordinates[l_idx], full.yCoordinates[g_idx]);
     }
   }
 }
@@ -165,20 +189,19 @@ TEST(UQOneDomainTest, ExtractOneDomainHaloClamping) {
   FullGrid full;
   full.nx = nx;
   full.ny = ny;
-  full.land_sea_map.assign(nx * ny, 1);
+  full.landMask.assign(nx * ny, 1);
+  full.shared.landMask = full.landMask;
 
   std::vector<int> partition_map =
-      partitionGlobalGrid(nx, ny, full.land_sea_map, 2);
+      partitionGlobalGrid(nx, ny, full.landMask, 2);
 
   // Large halo width (e.g. 20) should be clamped to grid boundaries
-  ReducedGrid red = extractOneDomain(full, partition_map, 1, 20);
+  LocalGridPartition red = extractOneDomain(full, partition_map, 1, 20);
 
-  EXPECT_EQ(red.global_x_min, 0);
-  EXPECT_EQ(red.global_y_min, 0);
-  EXPECT_EQ(red.global_x_max, nx - 1);
-  EXPECT_EQ(red.global_y_max, ny - 1);
-  EXPECT_EQ(red.nx_local, nx);
-  EXPECT_EQ(red.ny_local, ny);
+  EXPECT_EQ(red.localNx, static_cast<std::size_t>(nx));
+  EXPECT_EQ(red.localNy, static_cast<std::size_t>(ny));
+  EXPECT_EQ(red.localToGlobalMap.front(), 0u);
+  EXPECT_EQ(red.localToGlobalMap.back(), static_cast<std::size_t>(nx * ny - 1));
 }
 
 TEST(UQOneDomainTest, ExtractOneDomainGlobalClosedWrapping) {
@@ -187,8 +210,11 @@ TEST(UQOneDomainTest, ExtractOneDomainGlobalClosedWrapping) {
   FullGrid full;
   full.nx = nx;
   full.ny = ny;
-  full.is_global = true;
-  full.land_sea_map.assign(nx * ny, 1);
+  RectangularGridData rect;
+  rect.isGlobal = true;
+  full.specific = rect;
+  full.landMask.assign(nx * ny, 1);
+  full.shared.landMask = full.landMask;
 
   // Define a partition map where Partition 1 occupies x = 0, 1 and x = 8, 9
   std::vector<int> partition_map(nx * ny, 2);
@@ -200,37 +226,38 @@ TEST(UQOneDomainTest, ExtractOneDomainGlobalClosedWrapping) {
   }
 
   // 1D longitude array
-  full.longitude.resize(nx);
+  full.xCoordinates.resize(nx);
   for (int x = 0; x < nx; ++x) {
-    full.longitude[x] = x * 36.0;
+    full.xCoordinates[x] = x * 36.0;
   }
+  full.shared.xCoordinates = full.xCoordinates;
 
   // Extract Partition 1 with halo = 1 across closure line
-  ReducedGrid red = extractOneDomain(full, partition_map, 1, 1, true);
+  std::vector<int> sliced_map;
+  LocalGridPartition red =
+      extractOneDomain(full, partition_map, 1, 1, true, &sliced_map);
 
   // Occupied span is {8, 9, 0, 1} (4 cols). Halo = 1 expands to {7, 8, 9, 0, 1,
   // 2} (6 cols)
-  EXPECT_EQ(red.nx_local, 6);
-  EXPECT_EQ(red.ny_local, ny);
-  EXPECT_EQ(red.global_x_min, 7);
-  EXPECT_EQ(red.global_x_max, 2);
+  EXPECT_EQ(red.localNx, 6u);
+  EXPECT_EQ(red.localNy, static_cast<std::size_t>(ny));
 
   // Check 1D longitudes for wrapped local grid
-  ASSERT_EQ(red.longitude.size(), 6u);
-  EXPECT_DOUBLE_EQ(red.longitude[0], full.longitude[7]);
-  EXPECT_DOUBLE_EQ(red.longitude[1], full.longitude[8]);
-  EXPECT_DOUBLE_EQ(red.longitude[2], full.longitude[9]);
-  EXPECT_DOUBLE_EQ(red.longitude[3], full.longitude[0]);
-  EXPECT_DOUBLE_EQ(red.longitude[4], full.longitude[1]);
-  EXPECT_DOUBLE_EQ(red.longitude[5], full.longitude[2]);
+  ASSERT_EQ(red.xCoordinates.size(), 6u);
+  EXPECT_DOUBLE_EQ(red.xCoordinates[0], full.xCoordinates[7]);
+  EXPECT_DOUBLE_EQ(red.xCoordinates[1], full.xCoordinates[8]);
+  EXPECT_DOUBLE_EQ(red.xCoordinates[2], full.xCoordinates[9]);
+  EXPECT_DOUBLE_EQ(red.xCoordinates[3], full.xCoordinates[0]);
+  EXPECT_DOUBLE_EQ(red.xCoordinates[4], full.xCoordinates[1]);
+  EXPECT_DOUBLE_EQ(red.xCoordinates[5], full.xCoordinates[2]);
 
   // Check partition_map slicing for wrapped local grid
-  for (int y_loc = 0; y_loc < red.ny_local; ++y_loc) {
-    for (int x_loc = 0; x_loc < red.nx_local; ++x_loc) {
-      int gx = (red.global_x_min + x_loc) % nx;
-      int g_idx = y_loc * nx + gx;
-      int l_idx = y_loc * red.nx_local + x_loc;
-      EXPECT_EQ(red.partition_map[l_idx], partition_map[g_idx]);
+  for (std::size_t y_loc = 0; y_loc < red.localNy; ++y_loc) {
+    for (std::size_t x_loc = 0; x_loc < red.localNx; ++x_loc) {
+      int gx = static_cast<int>((7 + x_loc) % nx);
+      int g_idx = static_cast<int>(y_loc) * nx + gx;
+      std::size_t l_idx = y_loc * red.localNx + x_loc;
+      EXPECT_EQ(sliced_map[l_idx], partition_map[g_idx]);
     }
   }
 }
@@ -239,25 +266,27 @@ TEST(UQOneDomainTest, ExtractOneDomainInvalidPartitionOrGrid) {
   FullGrid full;
   full.nx = 5;
   full.ny = 5;
-  full.land_sea_map.assign(25, 1);
+  full.landMask.assign(25, 1);
+  full.shared.landMask = full.landMask;
 
   std::vector<int> partition_map(25, 1);
 
   // Non-existent partition ID
-  ReducedGrid red_invalid = extractOneDomain(full, partition_map, 99, 1);
-  EXPECT_EQ(red_invalid.nx_local, 0);
-  EXPECT_EQ(red_invalid.ny_local, 0);
-  EXPECT_TRUE(red_invalid.land_sea_map.empty());
+  LocalGridPartition red_invalid = extractOneDomain(full, partition_map, 99, 1);
+  EXPECT_EQ(red_invalid.localNx, 0u);
+  EXPECT_EQ(red_invalid.localNy, 0u);
+  EXPECT_TRUE(red_invalid.landMask.empty());
 
   // Mismatched partition_map size
   std::vector<int> short_map(10, 1);
-  ReducedGrid red_short = extractOneDomain(full, short_map, 1, 1);
-  EXPECT_EQ(red_short.nx_local, 0);
-  EXPECT_EQ(red_short.ny_local, 0);
+  LocalGridPartition red_short = extractOneDomain(full, short_map, 1, 1);
+  EXPECT_EQ(red_short.localNx, 0u);
+  EXPECT_EQ(red_short.localNy, 0u);
 
   // Invalid nx or ny
   FullGrid bad_full = full;
-  bad_full.nx = -1;
-  ReducedGrid red_bad_dim = extractOneDomain(bad_full, partition_map, 1, 1);
-  EXPECT_EQ(red_bad_dim.nx_local, 0);
+  bad_full.nx = 0;
+  LocalGridPartition red_bad_dim =
+      extractOneDomain(bad_full, partition_map, 1, 1);
+  EXPECT_EQ(red_bad_dim.localNx, 0u);
 }

@@ -22,7 +22,8 @@
  * @date Last update : 2026-11-09
  */
 
-#include "UQ_read_grid.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.h"
+#include "ww4_core/solver_UQ/utils_UQ_IO/UQ_nc_handle.h"
 
 #include <netcdf.h>
 
@@ -36,41 +37,6 @@
 namespace ww4::io {
 
 namespace {
-
-/**
- * @brief RAII wrapper for NetCDF file handle `ncid`.
- */
-class NcHandle {
-public:
-  explicit NcHandle(const int id) noexcept : ncid_(id) {}
-
-  ~NcHandle() {
-    if (ncid_ >= 0) {
-      nc_close(ncid_);
-    }
-  }
-
-  NcHandle(const NcHandle &) = delete;
-  NcHandle &operator=(const NcHandle &) = delete;
-
-  NcHandle(NcHandle &&other) noexcept : ncid_(other.ncid_) { other.ncid_ = -1; }
-
-  NcHandle &operator=(NcHandle &&other) noexcept {
-    if (this != &other) {
-      if (ncid_ >= 0) {
-        nc_close(ncid_);
-      }
-      ncid_ = other.ncid_;
-      other.ncid_ = -1;
-    }
-    return *this;
-  }
-
-  [[nodiscard]] int get() const noexcept { return ncid_; }
-
-private:
-  int ncid_{-1};
-};
 
 /**
  * @brief Utility function to check NetCDF status without printing or
