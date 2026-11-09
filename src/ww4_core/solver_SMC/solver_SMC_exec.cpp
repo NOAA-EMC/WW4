@@ -4,7 +4,7 @@
  *       +--------------------------------------------------------+
  *
  * @file solver_SMC_exec.cpp
- * @brief Implementation of the SMC grid solver execution stub.
+ * @brief Implementation of the SMC grid solver execution.
  * @details Concrete implementation of the ISolver interface for SMC grids.
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-09-15
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_SMC/solver_SMC_exec.h"

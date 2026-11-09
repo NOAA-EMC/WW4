@@ -4,7 +4,7 @@
  *       +--------------------------------------------------------+
  *
  * @file solver_triangular_exec.cpp
- * @brief Implementation of the triangular grid solver execution stub.
+ * @brief Implementation of the triangular grid solver execution.
  * @details Concrete implementation of the ISolver interface for triangular
  * unstructured grids.
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-09-15
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_core/solver_triangular/solver_triangular_exec.h"

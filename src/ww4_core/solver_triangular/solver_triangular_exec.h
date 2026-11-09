@@ -4,7 +4,7 @@
  *       +--------------------------------------------------------+
  *
  * @file solver_triangular_exec.h
- * @brief Header for the triangular unstructured grid solver stub.
+ * @brief Header for the triangular unstructured grid solver.
  * @details Concrete implementation of the ISolver interface using triangular
  * grid approach.
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-09-15
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 
 #pragma once
@@ -34,28 +34,46 @@ namespace ww4_core {
 // --- SolverTriangularGrid ---------------------------------------------------
 /**
  * @class SolverTriangularGrid
- * @brief Implementation of the Triangular grid solver stub.
+ * @brief Implementation of the triangular unstructured grid solver.
+ * @details Implements the ISolver lifecycle methods (init, solve,
+ * addSourceTerm) for triangular unstructured grids.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-09-15
- * @date Last update : 2026-10-22
+ * @date Last update : 2026-11-09
  */
 class SolverTriangularGrid : public ISolver {
 public:
   SolverTriangularGrid() = default;
   ~SolverTriangularGrid() override = default;
 
+  /**
+   * @brief Retrieves the solver scheme name.
+   * @return String view representing the solver name ("Triangular").
+   */
   [[nodiscard]] std::string_view getName() const noexcept override {
     return "Triangular";
   }
 
+  /**
+   * @brief Registers an external physical source term component.
+   * @param[in] source Unique pointer to an ISourceTerm implementation.
+   */
   void addSourceTerm(std::unique_ptr<ISourceTerm> source) override;
 
+  /**
+   * @brief Initializes the solver using solver_triangular_init.
+   */
   void init() override;
 
+  /**
+   * @brief Executes wave action propagation and evaluates source terms.
+   * @param[in,out] data Span of wave action spectrum data values.
+   */
   void solve(std::span<double> data) override;
 
 private:
+  /// Registered physical source terms evaluated during execution
   std::vector<std::unique_ptr<ISourceTerm>> sourceTerms_;
 };
 
