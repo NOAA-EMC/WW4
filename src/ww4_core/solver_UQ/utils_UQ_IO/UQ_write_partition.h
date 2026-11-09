@@ -1,24 +1,25 @@
-//+ -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-//-- | WAVEWATCH IV, open source, code management by NOAA / NWS |
-//+ -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-//--
-//
-// @file UQ_write_partition.h
-// @brief NetCDF partition map writer tools for WAVEWATCH IV UQ solver.
-// @details Header declaring subroutines to open a NetCDF partition map file,
-// populate metadata from the full grid and partition configuration, and
-// incrementally write one or more partition maps to document map evolution.
-//
-// @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
-// Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks
-// of the National Weather Service.
-// NWS often uses Generative AI (GenAI) for code development and refactoring.
-// Whenever GenAI is used, NWS requires a full human review of code before it
-// is added to its repositories.
-// @author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
-// @author Contributors : Jules (Agentic AI)
-// @date Initial : 2026-11-03
-// @date Last update : 2026-11-05
+/**
+ *       +--------------------------------------------------------+
+ *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
+ *       +--------------------------------------------------------+
+ *
+ * @file UQ_write_partition.h
+ * @brief NetCDF partition map writer tools for WAVEWATCH IV UQ solver.
+ * @details Header declaring subroutines to open a NetCDF partition map file,
+ * populate metadata from the full grid and partition configuration, and
+ * incrementally write one or more partition maps to document map evolution.
+ *
+ * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
+ * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
+ * Weather Service.
+ * NWS often uses Generative AI (GenAI) for code development and refactoring.
+ * Whenever GenAI is used, NWS requires a full human review of code before it is
+ * added to its repositories.
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI)
+ * @date Initial, 2026-11-03
+ * @date Last update : 2026-11-09
+ */
 
 #ifndef WW4_UQ_WRITE_PARTITION_H
 #define WW4_UQ_WRITE_PARTITION_H

@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-09-15
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 
 #pragma once
@@ -34,27 +34,46 @@ namespace ww4_core {
 /**
  * @class SolverRectangularGrid
  * @brief Implementation of the UQ solver for regular grids.
+ * @details Implements the ISolver lifecycle methods (init, solve,
+ * addSourceTerm) for regular rectangular grids under the Ultimate Quickest
+ * advection scheme.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-09-15
- * @date Last update : 2026-10-22
+ * @date Last update : 2026-11-09
  */
 class SolverRectangularGrid : public ISolver {
 public:
   SolverRectangularGrid() = default;
   ~SolverRectangularGrid() override = default;
 
+  /**
+   * @brief Retrieves the solver scheme name.
+   * @return String view representing the solver name ("UQ").
+   */
   [[nodiscard]] std::string_view getName() const noexcept override {
     return "UQ";
   }
 
+  /**
+   * @brief Registers an external physical source term component.
+   * @param[in] source Unique pointer to an ISourceTerm implementation.
+   */
   void addSourceTerm(std::unique_ptr<ISourceTerm> source) override;
 
+  /**
+   * @brief Initializes the solver using solver_UQ_init.
+   */
   void init() override;
 
+  /**
+   * @brief Executes wave action propagation and evaluates source terms.
+   * @param[in,out] data Span of wave action spectrum data values.
+   */
   void solve(std::span<double> data) override;
 
 private:
+  /// Registered physical source terms evaluated during execution
   std::vector<std::unique_ptr<ISourceTerm>> sourceTerms_;
 };
 

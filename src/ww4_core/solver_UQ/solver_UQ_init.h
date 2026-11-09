@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-23
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 
 #pragma once
@@ -29,11 +29,15 @@ namespace ww4_core {
 /**
  * @brief Initialization routine for the Ultimate Quickest (UQ) regular grid
  * solver.
- * @param os Output stream for logging.
+ * @details Reads NetCDF-UGRID grid geometry and metadata using readUQgrid,
+ * captures grid metadata, computes or reads domain decomposition partition
+ * structures, extracts the local domain partition grid with halo cells, and
+ * sets up inter-rank halo communication structures.
+ * @param[in,out] os Output stream for logging and screen messages.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-10-22
- * @date Last update : 2026-10-26
+ * @date Last update : 2026-11-09
  */
 void solver_UQ_init(std::ostream &os = std::cout);
 
