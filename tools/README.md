@@ -42,14 +42,15 @@ To plot or animate the domain maps stored in a NetCDF domain file:
 
 ```bash
 ./tools/plot_UQ_domains.sh --help
-./tools/plot_UQ_domains.sh <domain_file.nc> [--type <format>] [--animate] [--step <n>] [--fps <rate>]
-./tools/plot_UQ_domains.sh --input <domain_file.nc> [--type <format>] [--animate] [--step <n>] [--fps <rate>]
+./tools/plot_UQ_domains.sh <domain_file.nc> [--grid <grid_file.nc>] [--type <format>] [--animate] [--step <n>] [--fps <rate>]
+./tools/plot_UQ_domains.sh --input <domain_file.nc> [--grid <grid_file.nc>] [--type <format>] [--animate] [--step <n>] [--fps <rate>]
 ```
 
 Options:
 - `--help`, `-h`: Show help message and exit.
 - `<domain_file.nc>`: Path to the NetCDF domain file (positional argument).
 - `--input <domain_file.nc>`, `-i <domain_file.nc>`: Path to the NetCDF domain file (optional alternative to positional argument).
+- `--grid <grid_file.nc>`, `-g <grid_file.nc>`: Path to the associated UGRID grid file containing `grid_mask` (optional, automatically searched if omitted).
 - `--type <format>`, `-t <format>`: Output graphic file format/type (e.g. `png`, `jpg`, `jpeg`, `pdf`, `eps`, `gif`). Default: `png`. Output file is saved in the current working directory, replacing the input file's `.nc` extension with the graphic format extension.
 - `--animate`: Generate an animated GIF showing the evolution across maps.
 - `--step <n>`, `-n <n>`: Sample every n-th iteration / map in animations (default: `1`). Initial and final maps are always included.
