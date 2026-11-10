@@ -15,16 +15,16 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  * @note The architectural design of this routine follows the structure of
  *       the multi-grid shell (ww3_multi.F90) in WAVEWATCH III.
  *       Original author of WW3 multi-grid shell: Hendrik L. Tolman.
  */
 
 #include "ww4_core/w4core_init.h"
-#include "ww4_core/solver_smc/solver_smc.h"
-#include "ww4_core/solver_triangular/solver_triangular.h"
-#include "ww4_core/solver_uq/solver_uq.h"
+#include "ww4_core/solver_SMC/solver_SMC_init.h"
+#include "ww4_core/solver_UQ/solver_UQ_init.h"
+#include "ww4_core/solver_triangular/solver_triangular_init.h"
 #include "ww4_utils/time_management.h"
 #include "ww4_utils/ww4_input_utils.h"
 #include "ww4_utils/ww4_logfile.h"
@@ -55,7 +55,7 @@ ww4_utils::waveTimeData waveTimeData;
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  */
 void w4core_init(const ww4_utils::DateTime &startTime,
                  std::string_view programName, std::ostream &os) {
@@ -112,7 +112,6 @@ void w4core_init(const ww4_utils::DateTime &startTime,
               << std::endl;
 
       ww4_utils::reportRunConfig(globalRunConfig, logFile);
-      ww4_utils::ww4_logfile::writeLogTableHeader(logFile);
     }
 
   } catch (const std::exception &e) {
@@ -129,13 +128,13 @@ void w4core_init(const ww4_utils::DateTime &startTime,
   // === Initialize numerical solver ==========================================
   switch (globalRunConfig.solver) {
   case ww4_utils::SolverType::UQ:
-    w4core_init_uq(os);
+    solver_UQ_init(os);
     break;
   case ww4_utils::SolverType::Triangular:
-    w4core_init_triangular(os);
+    solver_triangular_init(os);
     break;
   case ww4_utils::SolverType::SMC:
-    w4core_init_smc(os);
+    solver_SMC_init(os);
     break;
   default:
     // Explanatory comment preceding __FILE__ and __LINE__
@@ -149,6 +148,11 @@ void w4core_init(const ww4_utils::DateTime &startTime,
   // === Data initialization ==================================================
   waveTimeData.modelTime = startTime;
   waveTimeData.timeStep = globalRunConfig.timeStep;
+
+  // === Write log table header after all initializations are completed ======
+  if (globalRunConfig.produceLogFile && logFile.is_open()) {
+    ww4_utils::ww4_logfile::writeLogTableHeader(logFile);
+  }
 }
 
 // --- Accessors --------------------------------------------------------------

@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -28,7 +29,10 @@ protected:
   void SetUp() override {
     startTime = {19680606, 60000.0};
     endTime = {19680606, 180000.0};
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
   }
+
+  void TearDown() override { std::remove("test_grid.nc"); }
 
   ww4_utils::DateTime startTime;
   ww4_utils::DateTime endTime;
@@ -37,6 +41,8 @@ protected:
 TEST_F(W4CoreTimeTest, CallCoreRoutinesWithTime) {
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
@@ -75,6 +81,8 @@ TEST_F(W4CoreTimeTest, CallCoreRoutinesWithTime) {
 TEST_F(W4CoreTimeTest, WaveFailsIfEndTimeBeforeStartTime) {
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
@@ -107,6 +115,8 @@ TEST_F(W4CoreTimeTest, WaveFailsIfEndTimeBeforeStartTime) {
 TEST_F(W4CoreTimeTest, WaveHandlesEqualStartAndEndTime) {
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
@@ -145,6 +155,8 @@ TEST_F(W4CoreTimeTest, WaveFailsIfNoInit) {
 TEST_F(W4CoreTimeTest, WaveFailsIfTimeMismatch) {
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";

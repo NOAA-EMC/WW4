@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-06-24
- * @date Last update : 2026-09-29
+ * @date Last update : 2026-10-16
  */
 
 #include "ww4_core/scheme_factory.h"
@@ -45,17 +45,17 @@ TEST(SchemeFactoryTest, CreateSolverSMC) {
 }
 
 TEST(SchemeFactoryTest, CreateSourceComputeAllSources) {
-  auto scheme = SchemeFactory::createSourceTerm("compute_all_sources");
+  auto scheme = SchemeFactory::createSourceTerm("ComputeAllSources");
   ASSERT_NE(scheme, nullptr);
   EXPECT_EQ(scheme->getName(), "ComputeAllSources");
 }
 
 TEST(SchemeFactoryTest, CreateSubSourceTerms) {
-  auto st1 = SchemeFactory::createSourceTerm("st1");
+  auto st1 = SchemeFactory::createSourceTerm("ST1");
   ASSERT_NE(st1, nullptr);
   EXPECT_EQ(st1->getName(), "ST1");
 
-  auto st2 = SchemeFactory::createSourceTerm("st2");
+  auto st2 = SchemeFactory::createSourceTerm("ST2");
   ASSERT_NE(st2, nullptr);
   EXPECT_EQ(st2->getName(), "ST2");
 
@@ -67,11 +67,11 @@ TEST(SchemeFactoryTest, CreateSubSourceTerms) {
   ASSERT_NE(st6, nullptr);
   EXPECT_EQ(st6->getName(), "ST6");
 
-  auto nl1 = SchemeFactory::createSourceTerm("nl1");
+  auto nl1 = SchemeFactory::createSourceTerm("NL1");
   ASSERT_NE(nl1, nullptr);
   EXPECT_EQ(nl1->getName(), "NL1");
 
-  auto nl2 = SchemeFactory::createSourceTerm("nl2");
+  auto nl2 = SchemeFactory::createSourceTerm("NL2");
   ASSERT_NE(nl2, nullptr);
   EXPECT_EQ(nl2->getName(), "NL2");
 

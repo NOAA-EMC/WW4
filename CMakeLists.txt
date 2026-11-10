@@ -14,7 +14,7 @@
 #@author Main Author(s) : Aldgisl (AI Persona), Hendrik L. Tolman
 #@author Contributors : Jules (Agentic AI), Kit Stokes, Jessica Meixner
 #@date Initial : 2026-07-09
-#@date Last update : 2026-10-15
+#@date Last update : 2026-11-02
 
 cmake_minimum_required(VERSION 3.25)
 
@@ -61,9 +61,57 @@ endif()
 
 # yaml-cpp for configuration parsing
 if(EXISTS "${CMAKE_SOURCE_DIR}/externals/yaml-cpp/CMakeLists.txt")
+    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(YAML_CPP_INSTALL OFF CACHE BOOL "" FORCE)
     add_subdirectory(externals/yaml-cpp EXCLUDE_FROM_ALL SYSTEM)
 else()
     message(FATAL_ERROR "yaml-cpp submodule not found in externals/yaml-cpp. Please run: git submodule update --init --recursive")
+endif()
+
+# netcdf-c for NetCDF / UGRID file reading
+if(EXISTS "${CMAKE_SOURCE_DIR}/externals/netcdf-c/CMakeLists.txt")
+    find_package(HDF5 QUIET COMPONENTS C)
+    find_package(ZLIB QUIET)
+
+    if(HDF5_FOUND AND ZLIB_FOUND)
+        message(STATUS "NetCDF-4 dependencies found (HDF5 ${HDF5_VERSION}, ZLIB). Enabling NetCDF-4 support.")
+        set(NETCDF_ENABLE_HDF5 ON CACHE BOOL "" FORCE)
+        set(NETCDF_ENABLE_NETCDF_4 ON CACHE BOOL "" FORCE)
+    else()
+        message(STATUS "HDF5/ZLIB not found in local environment. Enabling NetCDF-3 classic support.")
+        set(NETCDF_ENABLE_HDF5 OFF CACHE BOOL "" FORCE)
+        set(NETCDF_ENABLE_NETCDF_4 OFF CACHE BOOL "" FORCE)
+    endif()
+
+    set(NETCDF_ENABLE_DAP OFF CACHE BOOL "" FORCE)
+    set(NETCDF_ENABLE_NCZARR OFF CACHE BOOL "" FORCE)
+    set(NETCDF_ENABLE_UTILITIES OFF CACHE BOOL "" FORCE)
+    set(NETCDF_BUILD_UTILITIES OFF CACHE BOOL "" FORCE)
+    set(NETCDF_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+    set(NETCDF_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    unset(ENABLE_DAP CACHE)
+    unset(ENABLE_EXAMPLES CACHE)
+    unset(ENABLE_HDF5 CACHE)
+    unset(ENABLE_NCZARR CACHE)
+    unset(ENABLE_NETCDF_4 CACHE)
+    unset(ENABLE_TESTS CACHE)
+    add_subdirectory(externals/netcdf-c EXCLUDE_FROM_ALL SYSTEM)
+
+    # Suppress warnings on netcdf-c targets in production mode
+    foreach(nc_target netcdf netcdf3 dispatch)
+        if(TARGET ${nc_target})
+            if(MSVC)
+                target_compile_options(${nc_target} PRIVATE /w)
+            else()
+                target_compile_options(${nc_target} PRIVATE -w)
+            endif()
+        endif()
+    endforeach()
+else()
+    message(FATAL_ERROR "netcdf-c submodule not found in externals/netcdf-c. Please run: git submodule update --init --recursive")
 endif()
 
 # Library: ww4_utils
@@ -71,9 +119,9 @@ add_library(
     ww4_utils
     src/ww4_utils/time_management.cpp
     src/ww4_utils/memory_utils.cpp
+    src/ww4_utils/spatial_grid.cpp
     src/ww4_utils/ww4_std_out.cpp
     src/ww4_utils/ww4_logfile.cpp
-    src/ww4_utils/ww4_standalone_config.cpp
     src/ww4_utils/ww4_run_config.cpp
     src/ww4_utils/ww4_input_utils.cpp
     src/ww4_utils/ww4_output_utils.cpp
@@ -91,10 +139,20 @@ add_library(
     src/ww4_core/w4core_wave.cpp
     src/ww4_core/w4core_finalize.cpp
     src/ww4_core/scheme_factory.cpp
-    src/ww4_core/solver_uq/solver_uq.cpp
-    src/ww4_core/solver_triangular/solver_triangular.cpp
-    src/ww4_core/solver_smc/solver_smc.cpp
-    src/ww4_core/source_terms/compute_all_source_terms.cpp
+    src/ww4_core/solver_UQ/solver_UQ_exec.cpp
+    src/ww4_core/solver_UQ/solver_UQ_init.cpp
+    src/ww4_core/solver_UQ/UQ_domains.cpp
+    src/ww4_core/solver_UQ/UQ_domain_topology.cpp
+    src/ww4_core/solver_UQ/UQ_one_domain.cpp
+    src/ww4_core/solver_UQ/utils_UQ_IO/UQ_read_grid.cpp
+    src/ww4_core/solver_UQ/utils_UQ_IO/UQ_write_grid.cpp
+    src/ww4_core/solver_UQ/utils_UQ_IO/UQ_write_partition.cpp
+    src/ww4_core/solver_UQ/utils_UQ_IO/UQ_read_partition.cpp
+    src/ww4_core/solver_triangular/solver_triangular_exec.cpp
+    src/ww4_core/solver_triangular/solver_triangular_init.cpp
+    src/ww4_core/solver_SMC/solver_SMC_exec.cpp
+    src/ww4_core/solver_SMC/solver_SMC_init.cpp
+    src/ww4_core/source_terms/ComputeAllSources/ComputeAllSources.cpp
     src/ww4_core/source_terms/ww4_ST1/ww4_ST1.cpp
     src/ww4_core/source_terms/ww4_ST2/ww4_ST2.cpp
     src/ww4_core/source_terms/ww4_ST4/ww4_ST4.cpp
@@ -108,19 +166,33 @@ add_library(
     src/ww4_core/wave_model_solver.cpp
 )
 target_include_directories(ww4_core PUBLIC src)
-target_link_libraries(ww4_core PUBLIC ww4_utils)
+target_link_libraries(ww4_core PUBLIC ww4_utils PUBLIC netcdf)
 target_compile_options(ww4_core PRIVATE ${WW4_COMMON_COMPILE_OPTIONS})
 target_link_options(ww4_core PRIVATE ${WW4_COMMON_LINK_OPTIONS})
 
 # Executable: ww4_standalone
-add_executable(ww4_standalone src/ww4_progs/ww4_standalone.cpp)
+add_executable(
+    ww4_standalone
+    src/ww4_progs/ww4_standalone.cpp
+    src/ww4_progs/ww4_standalone_args.cpp
+)
 target_link_libraries(ww4_standalone PRIVATE ww4_core ww4_utils)
 target_compile_options(ww4_standalone PRIVATE ${WW4_COMMON_COMPILE_OPTIONS})
 target_link_options(ww4_standalone PRIVATE ${WW4_COMMON_LINK_OPTIONS})
 
-# Place the main program in the exe directory
+# Executable: ww4_grid_inspect
+add_executable(
+    ww4_grid_inspect
+    src/ww4_progs/ww4_grid_inspect.cpp
+)
+target_link_libraries(ww4_grid_inspect PRIVATE ww4_core ww4_utils)
+target_compile_options(ww4_grid_inspect PRIVATE ${WW4_COMMON_COMPILE_OPTIONS})
+target_link_options(ww4_grid_inspect PRIVATE ${WW4_COMMON_LINK_OPTIONS})
+
+# Place the main programs in the exe directory
 set_target_properties(
     ww4_standalone
+    ww4_grid_inspect
     PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/exe
 )
 
@@ -129,6 +201,8 @@ if(WW4_ENABLE_TESTING)
     if(EXISTS "${CMAKE_SOURCE_DIR}/externals/googletest/CMakeLists.txt")
         # For Windows: Prevent overriding the parent project's compiler/linker settings
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
+        set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
         add_subdirectory(externals/googletest EXCLUDE_FROM_ALL SYSTEM)
     else()
         message(FATAL_ERROR "googletest submodule not found in externals/googletest. Please run: git submodule update --init --recursive")
@@ -163,9 +237,9 @@ if(WW4_ENABLE_TESTING)
     # Utils tests
     ww4_add_test(test_time_management tests/ww4_utils/L1_test_time_management.cpp ww4_utils)
     ww4_add_test(test_memory_utils tests/ww4_utils/L1_test_memory_utils.cpp ww4_utils)
+    ww4_add_test(test_spatial_grid tests/ww4_utils/L1_test_spatial_grid.cpp ww4_utils)
     ww4_add_test(test_ww4_std_out tests/ww4_utils/L1_test_ww4_std_out.cpp ww4_utils)
     ww4_add_test(test_ww4_logfile tests/ww4_utils/L1_test_ww4_logfile.cpp ww4_utils)
-    ww4_add_test(test_ww4_standalone_config tests/ww4_utils/L1_test_ww4_standalone_config.cpp ww4_utils)
     ww4_add_test(test_ww4_run_config tests/ww4_utils/L1_test_ww4_run_config.cpp ww4_utils)
     ww4_add_test(test_ww4_input_utils tests/ww4_utils/L1_test_ww4_input_utils.cpp ww4_utils)
     ww4_add_test(test_ww4_output_utils tests/ww4_utils/L1_test_ww4_output_utils.cpp ww4_utils)
@@ -174,25 +248,39 @@ if(WW4_ENABLE_TESTING)
 
     # Core tests
     ww4_add_test(test_scheme_factory tests/ww4_core/L1_test_scheme_factory.cpp ww4_core)
-    ww4_add_test(test_solver_uq tests/ww4_core/L1_test_solver_uq.cpp ww4_core)
-    ww4_add_test(test_solver_triangular tests/ww4_core/L1_test_solver_triangular.cpp ww4_core)
-    ww4_add_test(test_solver_smc tests/ww4_core/L1_test_solver_smc.cpp ww4_core)
+    ww4_add_test(test_UQ_domains tests/ww4_core/L1_test_UQ_domains.cpp ww4_core)
+    ww4_add_test(test_UQ_domain_topology tests/ww4_core/L1_test_UQ_domain_topology.cpp ww4_core)
+    ww4_add_test(test_UQ_one_domain tests/ww4_core/L1_test_UQ_one_domain.cpp ww4_core)
+    ww4_add_test(test_UQ_read_grid tests/ww4_core/L1_test_UQ_read_grid.cpp ww4_core)
+    ww4_add_test(test_UQ_write_grid tests/ww4_core/L1_test_UQ_write_grid.cpp ww4_core)
+    ww4_add_test(test_UQ_write_partition tests/ww4_core/L1_test_UQ_write_partition.cpp ww4_core)
+    ww4_add_test(test_UQ_read_partition tests/ww4_core/L1_test_UQ_read_partition.cpp ww4_core)
+    ww4_add_test(test_solver_UQ_exec tests/ww4_core/L1_test_solver_UQ_exec.cpp ww4_core)
+    ww4_add_test(test_solver_triangular_exec tests/ww4_core/L1_test_solver_triangular_exec.cpp ww4_core)
+    ww4_add_test(test_solver_SMC_exec tests/ww4_core/L1_test_solver_SMC_exec.cpp ww4_core)
+    ww4_add_test(test_solver_UQ_init tests/ww4_core/L1_test_solver_UQ_init.cpp ww4_core)
+    ww4_add_test(test_solver_triangular_init tests/ww4_core/L1_test_solver_triangular_init.cpp ww4_core)
+    ww4_add_test(test_solver_SMC_init tests/ww4_core/L1_test_solver_SMC_init.cpp ww4_core)
+    ww4_add_test(test_ww4_standalone_args tests/ww4_core/L1_test_ww4_standalone_args.cpp ww4_utils)
+    target_sources(test_ww4_standalone_args PRIVATE src/ww4_progs/ww4_standalone_args.cpp)
     ww4_add_test(test_ww4_standalone tests/ww4_core/L1_test_ww4_standalone.cpp ww4_core)
     target_compile_definitions(test_ww4_standalone PRIVATE STANDALONE_EXE_PATH="${CMAKE_SOURCE_DIR}/exe/ww4_standalone")
+    ww4_add_test(test_ww4_grid_inspect tests/ww4_core/L1_test_ww4_grid_inspect.cpp ww4_core)
+    target_compile_definitions(test_ww4_grid_inspect PRIVATE GRID_INSPECT_EXE_PATH="${CMAKE_SOURCE_DIR}/exe/ww4_grid_inspect")
     ww4_add_test(test_w4core_init tests/ww4_core/L1_test_w4core_init.cpp ww4_core)
     ww4_add_test(test_w4core_wave tests/ww4_core/L1_test_w4core_wave.cpp ww4_core)
     ww4_add_test(test_w4core_finalize tests/ww4_core/L1_test_w4core_finalize.cpp ww4_core)
-    ww4_add_test(test_compute_all_sources tests/ww4_core/L1_test_compute_all_source_terms.cpp ww4_core)
-    ww4_add_test(test_st1 tests/ww4_core/L1_test_ww4_ST1.cpp ww4_core)
-    ww4_add_test(test_st2 tests/ww4_core/L1_test_ww4_ST2.cpp ww4_core)
-    ww4_add_test(test_st4 tests/ww4_core/L1_test_ww4_ST4.cpp ww4_core)
-    ww4_add_test(test_st6 tests/ww4_core/L1_test_ww4_ST6.cpp ww4_core)
-    ww4_add_test(test_ln1 tests/ww4_core/L1_test_ww4_LN1.cpp ww4_core)
-    ww4_add_test(test_nl1 tests/ww4_core/L1_test_ww4_NL1.cpp ww4_core)
-    ww4_add_test(test_nl2 tests/ww4_core/L1_test_ww4_NL2.cpp ww4_core)
-    ww4_add_test(test_nl3 tests/ww4_core/L1_test_ww4_NL3.cpp ww4_core)
-    ww4_add_test(test_bt1 tests/ww4_core/L1_test_ww4_BT1.cpp ww4_core)
-    ww4_add_test(test_bt4 tests/ww4_core/L1_test_ww4_BT4.cpp ww4_core)
+    ww4_add_test(test_ComputeAllSources tests/ww4_core/L1_test_ComputeAllSources.cpp ww4_core)
+    ww4_add_test(test_ST1 tests/ww4_core/L1_test_ww4_ST1.cpp ww4_core)
+    ww4_add_test(test_ST2 tests/ww4_core/L1_test_ww4_ST2.cpp ww4_core)
+    ww4_add_test(test_ST4 tests/ww4_core/L1_test_ww4_ST4.cpp ww4_core)
+    ww4_add_test(test_ST6 tests/ww4_core/L1_test_ww4_ST6.cpp ww4_core)
+    ww4_add_test(test_LN1 tests/ww4_core/L1_test_ww4_LN1.cpp ww4_core)
+    ww4_add_test(test_NL1 tests/ww4_core/L1_test_ww4_NL1.cpp ww4_core)
+    ww4_add_test(test_NL2 tests/ww4_core/L1_test_ww4_NL2.cpp ww4_core)
+    ww4_add_test(test_NL3 tests/ww4_core/L1_test_ww4_NL3.cpp ww4_core)
+    ww4_add_test(test_BT1 tests/ww4_core/L1_test_ww4_BT1.cpp ww4_core)
+    ww4_add_test(test_BT4 tests/ww4_core/L1_test_ww4_BT4.cpp ww4_core)
     ww4_add_test(test_wave_model_solver tests/ww4_core/L2_test_wave_model_solver.cpp ww4_core)
     ww4_add_test(test_w4core_time tests/ww4_core/L2_test_w4core_time.cpp ww4_core)
     ww4_add_test(test_w4core_wave_output tests/ww4_core/L2_test_w4core_wave_output.cpp ww4_core)

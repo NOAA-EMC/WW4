@@ -15,7 +15,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  * @note The architectural design of this routine follows the structure of
  *       the multi-grid shell (ww3_multi.F90) in WAVEWATCH III.
  *       Original author of WW3 multi-grid shell: Hendrik L. Tolman.
@@ -34,7 +34,7 @@
 
 namespace ww4_core {
 
-// --- w4core_wave_uq ---------------------------------------------------------
+// --- solver_UQ_exec ---------------------------------------------------------
 /**
  * @brief Solver routine for Ultimate Quickest (UQ) scheme on a regular grid.
  * @param timeStep Time step in seconds.
@@ -42,9 +42,9 @@ namespace ww4_core {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  */
-void w4core_wave_uq(double timeStep, std::ostream &os) {
+void solver_UQ_exec(double timeStep, std::ostream &os) {
   (void)timeStep;
   if (getRunConfig().produceStdOut &&
       getRunConfig().screenOutputLevel == ww4_utils::ScreenOutputLevel::Full) {
@@ -53,7 +53,7 @@ void w4core_wave_uq(double timeStep, std::ostream &os) {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
-// --- w4core_wave_triangular -------------------------------------------------
+// --- solver_triangular_exec -------------------------------------------------
 /**
  * @brief Solver routine for triangular unstructured grid approach.
  * @param timeStep Time step in seconds.
@@ -61,9 +61,9 @@ void w4core_wave_uq(double timeStep, std::ostream &os) {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  */
-void w4core_wave_triangular(double timeStep, std::ostream &os) {
+void solver_triangular_exec(double timeStep, std::ostream &os) {
   (void)timeStep;
   if (getRunConfig().produceStdOut &&
       getRunConfig().screenOutputLevel == ww4_utils::ScreenOutputLevel::Full) {
@@ -72,7 +72,7 @@ void w4core_wave_triangular(double timeStep, std::ostream &os) {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
-// --- w4core_wave_smc --------------------------------------------------------
+// --- solver_SMC_exec --------------------------------------------------------
 /**
  * @brief Solver routine for Spherical Multiple-Cell (SMC) grid solver.
  * @param timeStep Time step in seconds.
@@ -80,9 +80,9 @@ void w4core_wave_triangular(double timeStep, std::ostream &os) {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  */
-void w4core_wave_smc(double timeStep, std::ostream &os) {
+void solver_SMC_exec(double timeStep, std::ostream &os) {
   (void)timeStep;
   if (getRunConfig().produceStdOut &&
       getRunConfig().screenOutputLevel == ww4_utils::ScreenOutputLevel::Full) {
@@ -103,14 +103,14 @@ void w4core_wave_smc(double timeStep, std::ostream &os) {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-25
+ * @date Last update : 2026-10-26
  */
 void w4core_wave(const ww4_utils::DateTime &startTime,
                  const ww4_utils::DateTime &endTime, std::ostream &os) {
   try {
     // === General initialization =============================================
     if (getRunConfig().produceStdOut) {
-      os << "  Time stepping (w4core_wave) from: "
+      os << "\n  Time stepping (w4core_wave) from: "
          << ww4_utils::TimeManagement::toFormattedString(startTime)
          << " to: " << ww4_utils::TimeManagement::toFormattedString(endTime)
          << "\n"
@@ -214,13 +214,13 @@ void w4core_wave(const ww4_utils::DateTime &startTime,
         // === Propagate solution ============================================
         switch (getRunConfig().solver) {
         case ww4_utils::SolverType::UQ:
-          w4core_wave_uq(actualTimeStep, os);
+          solver_UQ_exec(actualTimeStep, os);
           break;
         case ww4_utils::SolverType::Triangular:
-          w4core_wave_triangular(actualTimeStep, os);
+          solver_triangular_exec(actualTimeStep, os);
           break;
         case ww4_utils::SolverType::SMC:
-          w4core_wave_smc(actualTimeStep, os);
+          solver_SMC_exec(actualTimeStep, os);
           break;
         default:
           // Explanatory comment preceding __FILE__ and __LINE__

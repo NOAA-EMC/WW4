@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -30,17 +31,19 @@ protected:
   void SetUp() override {
     ww4_core::resetInternalState();
     ww4_utils::TimeManagement::reset();
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
   }
 
   void TearDown() override {
     ww4_core::resetInternalState();
     ww4_utils::TimeManagement::reset();
     std::remove("ww4_run_config.yaml");
+    std::remove("test_grid.nc");
   }
 
   void writeYaml(const std::string &content) {
     std::ofstream ofs("ww4_run_config.yaml");
-    ofs << content;
+    ofs << "grid:\n  grid_file: test_grid.nc\n" << content;
     ofs.close();
   }
 };

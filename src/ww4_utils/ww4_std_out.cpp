@@ -16,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-04-01
- * @date Last update : 2026-10-01
+ * @date Last update : 2026-10-27
  * @note Converted from WAVEWATCH III (ww3_shel.F90, ww3_multi.F90, and
  *       w3servmd.F90).
  *       Original author: Hendrik L. Tolman.
@@ -118,7 +118,12 @@ void writeWarningOutput(std::ostream &os, std::string_view msg,
                          std::optional<std::string_view> msg,
                          std::optional<std::string_view> file,
                          std::optional<int> line) {
-  writeExtcdeOutput(os, msg, file, line);
+  if (&os == &std::cout || &os == &std::cerr) {
+    writeExtcdeOutput(std::cerr, msg, file, line);
+  } else {
+    writeExtcdeOutput(os, msg, file, line);
+    writeExtcdeOutput(std::cerr, msg, file, line);
+  }
   std::exit(exitCode);
 }
 

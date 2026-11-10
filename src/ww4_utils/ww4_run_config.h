@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-11-09
  */
 
 #pragma once
@@ -238,7 +238,7 @@ struct HomogeneousDataPoint {
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-11-09
  * @var RunConfig::calendarType
  * @brief Calendar type.
  * @var RunConfig::produceStdOut
@@ -255,6 +255,20 @@ struct HomogeneousDataPoint {
  * @brief Propagation flag in theta-direction.
  * @var RunConfig::propagateK
  * @brief Propagation flag in k-direction.
+ * @var RunConfig::gridFile
+ * @brief Grid file name.
+ * @var RunConfig::printGridMeta
+ * @brief Optional printing of grid file metadata flag.
+ * @var RunConfig::intermediateMaps
+ * @brief Option to save each consecutive map during partitioning to file flag.
+ * @var RunConfig::writeLocalGrid
+ * @brief Option to write extracted local domain grid to NetCDF file flag.
+ * @var RunConfig::maxIterations
+ * @brief Maximum number of boundary refinement iterations during domain
+ * decomposition (default: 200).
+ * @var RunConfig::convergenceCriterion
+ * @brief Convergence criterion multiplier relative to target domain size
+ * (default: 1.05).
  * @var RunConfig::sourceTerms
  * @brief Source terms flag.
  * @var RunConfig::solver
@@ -287,6 +301,12 @@ struct HomogeneousDataPoint {
  * @brief Parameters defining the spectral space.
  * @var RunConfig::timeStep
  * @brief Model time step in seconds.
+ * @var RunConfig::numRanks
+ * @brief Total number of ranks for MPI simulation setup (default: 6).
+ * @var RunConfig::numRanksCompute
+ * @brief Number of compute ranks for MPI simulation setup (default: 5).
+ * @var RunConfig::actualRank
+ * @brief Actual rank ID for current process (default: 0).
  * @var RunConfig::outputApi
  * @brief API output configuration.
  * @var RunConfig::outputFields
@@ -307,6 +327,13 @@ struct RunConfig {
   bool propagateTheta = true;
   bool propagateK = true;
   bool sourceTerms = true;
+
+  std::string gridFile;
+  bool printGridMeta = false;
+  bool intermediateMaps = false;
+  bool writeLocalGrid = false;
+  int maxIterations = 200;
+  double convergenceCriterion = 1.05;
 
   SolverType solver = SolverType::Undefined;
   InputDissipationScheme inputDissipation = InputDissipationScheme::Undefined;
@@ -333,6 +360,10 @@ struct RunConfig {
   SpectralConfig spectralSpace;
 
   double timeStep = -1.0;
+
+  int numRanks = 6;
+  int numRanksCompute = 5;
+  int actualRank = 0;
 
   OutputConfig outputApi;
 

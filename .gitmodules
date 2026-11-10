@@ -4,3 +4,6 @@
 [submodule "externals/googletest"]
 	path = externals/googletest
 	url = https://github.com/google/googletest.git
+[submodule "externals/netcdf-c"]
+	path = externals/netcdf-c
+	url = https://github.com/Unidata/netcdf-c.git

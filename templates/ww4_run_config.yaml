@@ -35,9 +35,46 @@ general:
   # "full"    : Standard full output for every step.
   screen_output_level: "summary"
 
-  # Mandatory model time step in seconds.
+  # Temporary YAML inputs for testing in-core MPI simulation setup:
+  # Total number of ranks (default: 6).
+  num_ranks: 6
+
+  # Number of compute ranks (must be less than or equal to num_ranks, default: 5).
+  num_ranks_compute: 5
+
+  # Actual rank ID for current process (default: 0).
+  actual_rank: 0
+
+  # Temporary mandatory model time step in seconds.
   # This parameter must be positive and non-zero.
   time_step: 3600.0
+
+grid:
+  # Mandatory grid input file name (no default).
+  grid_file: "ww4_grid_ugrid.nc"
+
+  # Option for optional printing of metadata from the grid file after reading.
+  # Options: "no" (default), "yes"
+  print_meta: "no"
+
+  # Option to save each consecutive map generated during the iterative
+  # domain decomposition development process to the partition output file.
+  # Options: "no" (default), "yes"
+  intermediate_maps: "no"
+
+  # Option to write the extracted local domain grid including halo points to a
+  # NetCDF file (<BASE_NAME>.part<NNN>.nc).
+  # Options: "no" (default), "yes"
+  write_local_grid: "no"
+
+  # Maximum number of iterative boundary refinement passes during domain
+  # decomposition. Default: 200. Set to 0 to bypass iterative refinement.
+  max_iterations: 0
+
+  # Convergence criterion multiplier relative to target domain size.
+  # Refinement converges when largest domain is smaller than this factor * target.
+  # Default: 1.05.
+  convergence_criterion: 1.05
 
 spectral_space:
   # Parameters defining the discrete spectral space based on WAVEWATCH III.

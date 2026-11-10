@@ -15,18 +15,18 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), EJ Rainville
  * @date Initial, 2026-06-24
- * @date Last update : 2026-10-16
+ * @date Last update : 2026-10-26
  */
 
 // Scheme Selection and Source-Term Computation (Factory Pattern setup)
 
 #include "ww4_core/scheme_factory.h"
-#include "ww4_core/source_terms/compute_all_source_terms.h"
+#include "ww4_core/source_terms/ComputeAllSources/ComputeAllSources.h"
 
 // Solver definitions
-#include "ww4_core/solver_smc/solver_smc.h"
-#include "ww4_core/solver_triangular/solver_triangular.h"
-#include "ww4_core/solver_uq/solver_uq.h"
+#include "ww4_core/solver_SMC/solver_SMC_exec.h"
+#include "ww4_core/solver_UQ/solver_UQ_exec.h"
+#include "ww4_core/solver_triangular/solver_triangular_exec.h"
 
 // Source terms
 // --- Linear Input
@@ -58,7 +58,7 @@ namespace ww4_core {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-06-24
- * @date Last update : 2026-09-29
+ * @date Last update : 2026-10-16
  */
 std::unique_ptr<ISolver> SchemeFactory::createSolver(const std::string &name) {
   if (name == "SolverUQ") {
@@ -81,41 +81,41 @@ std::unique_ptr<ISolver> SchemeFactory::createSolver(const std::string &name) {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-06-24
- * @date Last update : 2026-09-29
+ * @date Last update : 2026-10-16
  */
 std::unique_ptr<ISourceTerm>
 SchemeFactory::createSourceTerm(const std::string &name) {
-  if (name == "ComputeAllSources" || name == "compute_all_sources") {
+  if (name == "ComputeAllSources") {
     return std::make_unique<ComputeAllSources>();
   }
-  if (name == "LN1" || name == "ln1") {
+  if (name == "LN1") {
     return std::make_unique<SourceTermLN1>();
   }
-  if (name == "ST1" || name == "st1") {
+  if (name == "ST1") {
     return std::make_unique<SourceTermST1>();
   }
-  if (name == "ST2" || name == "st2") {
+  if (name == "ST2") {
     return std::make_unique<SourceTermST2>();
   }
-  if (name == "ST4" || name == "st4") {
+  if (name == "ST4") {
     return std::make_unique<SourceTermST4>();
   }
-  if (name == "ST6" || name == "st6") {
+  if (name == "ST6") {
     return std::make_unique<SourceTermST6>();
   }
-  if (name == "NL1" || name == "nl1") {
+  if (name == "NL1") {
     return std::make_unique<SourceTermNL1>();
   }
-  if (name == "NL2" || name == "nl2") {
+  if (name == "NL2") {
     return std::make_unique<SourceTermNL2>();
   }
-  if (name == "NL3" || name == "nl3") {
+  if (name == "NL3") {
     return std::make_unique<SourceTermNL3>();
   }
-  if (name == "BT1" || name == "bt1") {
+  if (name == "BT1") {
     return std::make_unique<SourceTermBT1>();
   }
-  if (name == "BT4" || name == "bt4") {
+  if (name == "BT4") {
     return std::make_unique<SourceTermBT4>();
   }
   throw std::invalid_argument("Unknown source term scheme: " + name);

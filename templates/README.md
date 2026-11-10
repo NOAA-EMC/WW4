@@ -10,11 +10,7 @@ This directory contains template files for configuring WAVEWATCH IV runtime envi
 
 Users can copy templates from this directory to the desired working directory (typically the repository root or execution directory) and modify them as needed:
 
-1. Copy `templates/ww4_standalone.yaml` to configure simulation start/end times:
-   ```bash
-   cp templates/ww4_standalone.yaml ./ww4_standalone.yaml
-   ```
-2. Copy `templates/ww4_run_config.yaml` to configure general, physics, forcing, and output settings:
+1. Copy `templates/ww4_run_config.yaml` to configure general, physics, forcing, and output settings:
    ```bash
    cp templates/ww4_run_config.yaml ./ww4_run_config.yaml
    ```

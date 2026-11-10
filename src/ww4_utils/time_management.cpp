@@ -17,7 +17,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Hendrik L. Tolman, Jules (Agentic AI)
  * @date Initial, 2026-03-11
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-10-22
  */
 
 #include "ww4_utils/time_management.h"
@@ -30,6 +30,32 @@
 #include <sstream>
 
 namespace ww4_utils {
+
+// --- parseDateTimeString ----------------------------------------------------
+std::optional<DateTime> parseDateTimeString(const std::string_view s) {
+  const size_t start = s.find_first_not_of(" \t\r\n\"");
+  const size_t end = s.find_last_not_of(" \t\r\n\"");
+  if (start == std::string_view::npos)
+    return std::nullopt;
+  const std::string_view clean = s.substr(start, end - start + 1);
+
+  if (clean.length() < 15 || clean[8] != ' ')
+    return std::nullopt;
+
+  int ymd = 0;
+  const auto [ptr1, ec1] = std::from_chars(clean.data(), clean.data() + 8, ymd);
+  if (ec1 != std::errc())
+    return std::nullopt;
+
+  const std::string_view hms_part = clean.substr(9);
+  double hms = 0.0;
+  if (std::from_chars(hms_part.data(), hms_part.data() + hms_part.size(), hms)
+          .ec != std::errc()) {
+    return std::nullopt;
+  }
+
+  return DateTime{ymd, hms};
+}
 
 TimeManagement::CalendarType TimeManagement::m_calendarType =
     TimeManagement::CalendarType::Standard;

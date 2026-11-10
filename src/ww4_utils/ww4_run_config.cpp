@@ -17,11 +17,10 @@
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-10-01
+ * @date Last update : 2026-11-09
  */
 
 #include "ww4_utils/ww4_run_config.h"
-#include "ww4_utils/ww4_standalone_config.h"
 #include "ww4_utils/ww4_std_out.h"
 #include <algorithm>
 #include <charconv>
@@ -279,7 +278,7 @@ std::string_view cleanValue(const std::string_view s) {
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner,
  *                       Ming Chen
  * @date Initial, 2026-04-03
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-11-06
  */
 std::optional<RunConfig> loadRunConfig(const std::string_view filename,
                                        std::ostream &os) noexcept {
@@ -287,6 +286,46 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
     const YAML::Node config_node = YAML::LoadFile(std::string(filename));
 
     RunConfig config{};
+
+    // === Grid section ========================================================
+    if (const auto node = config_node["grid"]) {
+      if (node["grid_file"]) {
+        config.gridFile = cleanValue(node["grid_file"].as<std::string>());
+      }
+      if (node["print_meta"]) {
+        config.printGridMeta =
+            (cleanValue(node["print_meta"].as<std::string>()) == "yes");
+      }
+      if (node["intermediate_maps"]) {
+        config.intermediateMaps =
+            (cleanValue(node["intermediate_maps"].as<std::string>()) == "yes");
+      }
+      if (node["write_local_grid"]) {
+        config.writeLocalGrid =
+            (cleanValue(node["write_local_grid"].as<std::string>()) == "yes");
+      }
+      if (node["max_iterations"]) {
+        try {
+          config.maxIterations = node["max_iterations"].as<int>();
+          if (config.maxIterations < 0) {
+            config.maxIterations = 200;
+          }
+        } catch (...) {
+          config.maxIterations = 200;
+        }
+      }
+      if (node["convergence_criterion"]) {
+        try {
+          config.convergenceCriterion =
+              node["convergence_criterion"].as<double>();
+          if (config.convergenceCriterion <= 0.0) {
+            config.convergenceCriterion = 1.05;
+          }
+        } catch (...) {
+          config.convergenceCriterion = 1.05;
+        }
+      }
+    }
 
     // === General section =====================================================
     if (const auto node = config_node["general"]) {
@@ -320,6 +359,15 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
       }
       if (node["time_step"]) {
         config.timeStep = node["time_step"].as<double>();
+      }
+      if (node["num_ranks"]) {
+        config.numRanks = node["num_ranks"].as<int>();
+      }
+      if (node["num_ranks_compute"]) {
+        config.numRanksCompute = node["num_ranks_compute"].as<int>();
+      }
+      if (node["actual_rank"]) {
+        config.actualRank = node["actual_rank"].as<int>();
       }
     }
 
@@ -521,7 +569,7 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
     }
 
     // === Mandatory fields check ==============================================
-    if (config.solver == SolverType::Undefined ||
+    if (config.gridFile.empty() || config.solver == SolverType::Undefined ||
         config.inputDissipation == InputDissipationScheme::Undefined ||
         config.nonlinearInteractions == NonlinearScheme::Undefined ||
         config.linearInput == LinearInputScheme::Undefined ||
@@ -535,6 +583,8 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
             "invalid "
             "in configuration."
          << std::endl;
+      if (config.gridFile.empty())
+        os << "   Missing/invalid: grid -> grid_file" << std::endl;
       if (config.solver == SolverType::Undefined)
         os << "   Missing/invalid: physics -> solver" << std::endl;
       if (config.inputDissipation == InputDissipationScheme::Undefined)
@@ -569,6 +619,26 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
             "in configuration."
          << std::endl;
       ww4_std_out::extcde(1, os, "Missing or invalid mandatory time step.",
+                          __FILE__, __LINE__);
+    }
+
+    // === Rank configuration validation =======================================
+    if (config.numRanks <= 0 || config.numRanksCompute <= 0 ||
+        config.numRanksCompute > config.numRanks || config.actualRank < 0 ||
+        config.actualRank >= config.numRanks) {
+      os << "WW4 ERROR: Invalid rank configuration in general settings."
+         << std::endl;
+      if (config.numRanks <= 0)
+        os << "   Missing/invalid: general -> num_ranks" << std::endl;
+      if (config.numRanksCompute <= 0 ||
+          config.numRanksCompute > config.numRanks)
+        os << "   Missing/invalid: general -> num_ranks_compute" << std::endl;
+      if (config.actualRank < 0 || config.actualRank >= config.numRanks)
+        os << "   Missing/invalid: general -> actual_rank" << std::endl;
+
+      // An explanatory comment line must precede the first use of '__FILE__'
+      // and '__LINE__' Output error and terminate execution
+      ww4_std_out::extcde(1, os, "Missing or invalid rank configuration.",
                           __FILE__, __LINE__);
     }
 
@@ -615,7 +685,7 @@ std::optional<RunConfig> loadRunConfig(const std::string_view filename,
  * @author Main Author(s): Hendrik L. Tolman, Aldgisl (AI Persona)
  * @author Contributors: Jules (Agentic AI), Kit Stokes, Jessica Meixner
  * @date Initial, 2026-04-03
- * @date Last update : 2026-10-01
+ * @date Last update : 2026-11-06
  */
 void reportRunConfig(const RunConfig &config, std::ostream &os) {
   os << "\n  General settings :" << std::endl;
@@ -676,6 +746,15 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
 
   os << "\n  Configuration settings :" << std::endl;
 
+  os << "\n     Grid file name           : "
+     << (config.gridFile.empty() ? "none" : config.gridFile) << std::endl;
+  os << "     Print grid metadata      : "
+     << (config.printGridMeta ? "yes" : "no") << std::endl;
+  os << "     Save consecutive parts   : "
+     << (config.intermediateMaps ? "yes" : "no") << std::endl;
+  os << "     Write local domain grid  : "
+     << (config.writeLocalGrid ? "yes" : "no") << std::endl;
+
   std::string solverStr = "undefined";
   if (config.solver == SolverType::UQ) {
     solverStr = "UQ (Ultimate Quickest)";
@@ -684,7 +763,7 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
   } else if (config.solver == SolverType::SMC) {
     solverStr = "SMC (Spherical Multiple-Cell)";
   }
-  os << "\n     Solver scheme            : " << solverStr << std::endl;
+  os << "     Solver scheme            : " << solverStr << std::endl;
 
   std::string lnStr = "undefined";
   if (config.linearInput == LinearInputScheme::DoNotUse) {
@@ -732,6 +811,10 @@ void reportRunConfig(const RunConfig &config, std::ostream &os) {
 
   os << "\n     Time step                : " << config.timeStep << " s"
      << std::endl;
+  os << "     Number of ranks          : " << config.numRanks << std::endl;
+  os << "     Number of compute ranks  : " << config.numRanksCompute
+     << std::endl;
+  os << "     Actual rank              : " << config.actualRank << std::endl;
 
   os << "\n  Spectral space parameters :" << std::endl;
   os << "\n     Number of directions     : "

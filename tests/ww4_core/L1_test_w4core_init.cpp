@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -15,12 +16,15 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-07-09
- * @date Last update : 2026-09-29
+ * @date Last update : 2026-10-26
  */
 
-#include "ww4_core/solver_smc/solver_smc.h"
-#include "ww4_core/solver_triangular/solver_triangular.h"
-#include "ww4_core/solver_uq/solver_uq.h"
+#include "ww4_core/solver_SMC/solver_SMC_exec.h"
+#include "ww4_core/solver_SMC/solver_SMC_init.h"
+#include "ww4_core/solver_UQ/solver_UQ_exec.h"
+#include "ww4_core/solver_UQ/solver_UQ_init.h"
+#include "ww4_core/solver_triangular/solver_triangular_exec.h"
+#include "ww4_core/solver_triangular/solver_triangular_init.h"
 #include "ww4_core/w4core_init.h"
 #include <fstream>
 #include <gtest/gtest.h>
@@ -30,12 +34,16 @@ namespace ww4_core {
 
 class W4CoreInitTest : public ::testing::Test {
 protected:
-  void SetUp() override { resetInternalState(); }
+  void SetUp() override {
+    resetInternalState();
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
+  }
 
   void TearDown() override {
     resetInternalState();
     std::remove("ww4_run_config.yaml");
     std::remove("ww4_log.txt");
+    std::remove("test_grid.nc");
   }
 };
 
@@ -77,6 +85,8 @@ TEST_F(W4CoreInitTest, MutableRunConfig) {
 TEST_F(W4CoreInitTest, W4CoreInitAndReset) {
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
@@ -118,33 +128,40 @@ TEST_F(W4CoreInitTest, W4CoreInitAndReset) {
 TEST_F(W4CoreInitTest, SolverInitRoutines) {
   std::ostringstream ss;
   getMutableRunConfig().produceStdOut = true;
+  getMutableRunConfig().gridFile = "test_grid.nc";
   getMutableRunConfig().screenOutputLevel = ww4_utils::ScreenOutputLevel::Full;
 
-  w4core_init_uq(ss);
-  EXPECT_NE(ss.str().find("Initializing UQ regular grid solver"),
-            std::string::npos);
+  solver_UQ_init(ss);
+  EXPECT_NE(ss.str().find("Processing the grid:"), std::string::npos);
 
-  ss.str("");
-  w4core_init_triangular(ss);
-  EXPECT_NE(ss.str().find("Initializing Triangular unstructured grid solver"),
-            std::string::npos);
+  EXPECT_EXIT(solver_triangular_init(std::cerr), ::testing::ExitedWithCode(1),
+              "WW4 ERROR: Triangular unstructured grid reader not yet "
+              "implemented when reading bottom grid.");
 
-  ss.str("");
-  w4core_init_smc(ss);
-  EXPECT_NE(ss.str().find("Initializing SMC grid solver"), std::string::npos);
+  EXPECT_EXIT(
+      solver_SMC_init(std::cerr), ::testing::ExitedWithCode(1),
+      "WW4 ERROR: SMC grid reader not yet implemented when reading bottom "
+      "grid.");
 
   SolverRectangularGrid uq;
   uq.init();
 
   SolverTriangularGrid triangular;
-  triangular.init();
+  EXPECT_EXIT(triangular.init(), ::testing::ExitedWithCode(1),
+              "WW4 ERROR: Triangular unstructured grid reader not yet "
+              "implemented when reading bottom grid.");
 
   SolverSMCGrid smc;
-  smc.init();
+  EXPECT_EXIT(
+      smc.init(), ::testing::ExitedWithCode(1),
+      "WW4 ERROR: SMC grid reader not yet implemented when reading bottom "
+      "grid.");
 }
 
 TEST_F(W4CoreInitTest, InitWithTriangularAndSMC) {
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
@@ -163,14 +180,16 @@ TEST_F(W4CoreInitTest, InitWithTriangularAndSMC) {
   runFile.close();
 
   ww4_utils::DateTime startTime = {20260101, 0.0};
-  std::ostringstream ss;
-  w4core_init(startTime, "test_init", ss);
-
-  EXPECT_EQ(getProgramName(), "test_init");
+  EXPECT_EXIT(w4core_init(startTime, "test_init", std::cerr),
+              ::testing::ExitedWithCode(1),
+              "WW4 ERROR: Triangular unstructured grid reader not yet "
+              "implemented when reading bottom grid.");
 
   resetInternalState();
 
   std::ofstream runFile2("ww4_run_config.yaml");
+  runFile2 << "grid:\n";
+  runFile2 << "  grid_file: test_grid.nc\n";
   runFile2 << "general:\n";
   runFile2 << "  calendar_type: Standard\n";
   runFile2 << "  time_step: 3600.0\n";
@@ -188,8 +207,10 @@ TEST_F(W4CoreInitTest, InitWithTriangularAndSMC) {
   runFile2 << "  bottom_depth: none\n";
   runFile2.close();
 
-  w4core_init(startTime, "test_init_smc", ss);
-  EXPECT_EQ(getProgramName(), "test_init_smc");
+  EXPECT_EXIT(w4core_init(startTime, "test_init_smc", std::cerr),
+              ::testing::ExitedWithCode(1),
+              "WW4 ERROR: SMC grid reader not yet implemented when reading "
+              "bottom grid.");
 }
 
 } // namespace ww4_core

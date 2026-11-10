@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -15,7 +16,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-07-09
- * @date Last update : 2026-09-29
+ * @date Last update : 2026-10-26
  */
 
 #include "ww4_core/w4core_init.h"
@@ -27,23 +28,29 @@ namespace ww4_core {
 
 class W4CoreWaveL1Test : public ::testing::Test {
 protected:
-  void SetUp() override { resetInternalState(); }
+  void SetUp() override {
+    resetInternalState();
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
+  }
 
   void TearDown() override {
     resetInternalState();
     std::remove("ww4_run_config.yaml");
     std::remove("ww4_log.txt");
+    std::remove("test_grid.nc");
   }
 };
 
 TEST_F(W4CoreWaveL1Test, BasicWaveExecution) {
   // Explicit reference to solver call routines for coverage check:
-  // w4core_wave_uq
-  // w4core_wave_triangular
-  // w4core_wave_smc
+  // solver_UQ_exec
+  // solver_triangular_exec
+  // solver_SMC_exec
 
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";
@@ -74,6 +81,8 @@ TEST_F(W4CoreWaveL1Test, WaveExecutionTriangularAndSMC) {
   // Test Triangular solver execution
   {
     std::ofstream runFile("ww4_run_config.yaml");
+    runFile << "grid:\n";
+    runFile << "  grid_file: test_grid.nc\n";
     runFile << "general:\n";
     runFile << "  time_step: 3600.0\n";
     runFile << "physics:\n";
@@ -90,15 +99,18 @@ TEST_F(W4CoreWaveL1Test, WaveExecutionTriangularAndSMC) {
     runFile.close();
 
     ww4_utils::DateTime startTime = {20260101, 0.0};
-    w4core_init(startTime, "test_wave_tri", std::cout);
-    ww4_utils::DateTime endTime = {20260101, 10000.0};
-    EXPECT_NO_THROW(w4core_wave(startTime, endTime, std::cout));
+    EXPECT_EXIT(w4core_init(startTime, "test_wave_tri", std::cerr),
+                ::testing::ExitedWithCode(1),
+                "WW4 ERROR: Triangular unstructured grid reader not yet "
+                "implemented when reading bottom grid.");
     resetInternalState();
   }
 
   // Test SMC solver execution
   {
     std::ofstream runFile("ww4_run_config.yaml");
+    runFile << "grid:\n";
+    runFile << "  grid_file: test_grid.nc\n";
     runFile << "general:\n";
     runFile << "  time_step: 3600.0\n";
     runFile << "physics:\n";
@@ -115,9 +127,10 @@ TEST_F(W4CoreWaveL1Test, WaveExecutionTriangularAndSMC) {
     runFile.close();
 
     ww4_utils::DateTime startTime = {20260101, 0.0};
-    w4core_init(startTime, "test_wave_smc", std::cout);
-    ww4_utils::DateTime endTime = {20260101, 10000.0};
-    EXPECT_NO_THROW(w4core_wave(startTime, endTime, std::cout));
+    EXPECT_EXIT(w4core_init(startTime, "test_wave_smc", std::cerr),
+                ::testing::ExitedWithCode(1),
+                "WW4 ERROR: SMC grid reader not yet implemented when reading "
+                "bottom grid.");
   }
 }
 

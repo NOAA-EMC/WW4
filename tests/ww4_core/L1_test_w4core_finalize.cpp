@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -27,18 +28,24 @@ namespace ww4_core {
 
 class W4CoreFinalizeL1Test : public ::testing::Test {
 protected:
-  void SetUp() override { resetInternalState(); }
+  void SetUp() override {
+    resetInternalState();
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
+  }
 
   void TearDown() override {
     resetInternalState();
     std::remove("ww4_run_config.yaml");
     std::remove("ww4_log.txt");
+    std::remove("test_grid.nc");
   }
 };
 
 TEST_F(W4CoreFinalizeL1Test, BasicFinalize) {
   // Create dummy run configuration file
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";

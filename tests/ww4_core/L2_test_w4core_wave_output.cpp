@@ -1,3 +1,4 @@
+#include "ww4_core/solver_UQ/utils_UQ_IO/test_ugrid_helper.h"
 /**
  *       +--------------------------------------------------------+
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
@@ -31,12 +32,14 @@ protected:
   void SetUp() override {
     startTime = {19680606, 0.0};
     endTime = {19680606, 3600.0};
+    ww4::test_helpers::createMinimalUgridFile("test_grid.nc", 10, 10);
   }
 
   void TearDown() override {
     ww4_core::resetInternalState();
     std::remove("ww4_run_config.yaml");
     std::remove("ww4_log.txt");
+    std::remove("test_grid.nc");
   }
 
   ww4_utils::DateTime startTime;
@@ -47,6 +50,8 @@ TEST_F(W4CoreWaveOutputTest, ReportsApiOutputStatus) {
   // Test Case 1: API output disabled (default)
   {
     std::ofstream runFile("ww4_run_config.yaml");
+    runFile << "grid:\n";
+    runFile << "  grid_file: test_grid.nc\n";
     runFile << "general:\n";
     runFile << "  calendar_type: Standard\n";
     runFile << "  time_step: 3600.0\n";
@@ -82,6 +87,8 @@ TEST_F(W4CoreWaveOutputTest, ReportsApiOutputStatus) {
   // Test Case 2: API output enabled
   {
     std::ofstream runFile("ww4_run_config.yaml");
+    runFile << "grid:\n";
+    runFile << "  grid_file: test_grid.nc\n";
     runFile << "general:\n";
     runFile << "  calendar_type: Standard\n";
     runFile << "  time_step: 3600.0\n";
@@ -115,6 +122,8 @@ TEST_F(W4CoreWaveOutputTest, ReportsApiOutputStatus) {
 
 TEST_F(W4CoreWaveOutputTest, DoesNotReportBottomDepthFromGrid) {
   std::ofstream runFile("ww4_run_config.yaml");
+  runFile << "grid:\n";
+  runFile << "  grid_file: test_grid.nc\n";
   runFile << "general:\n";
   runFile << "  calendar_type: Standard\n";
   runFile << "  time_step: 3600.0\n";

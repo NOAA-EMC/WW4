@@ -18,7 +18,7 @@
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI)
  * @date Initial, 2026-03-11
- * @date Last update : 2026-09-28
+ * @date Last update : 2026-10-22
  * @note This file is converted from WAVEWATCH III (WW3) source file
  *       w3timemd.F90. Original author in WW3: Hendrik L. Tolman.
  */
@@ -27,6 +27,7 @@
 
 #include <array>
 #include <chrono>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -58,6 +59,18 @@ struct DateTime {
     return !(*this == other);
   }
 };
+
+// --- parseDateTimeString ----------------------------------------------------
+/**
+ * @brief Helper to parse a date-time string in "YYYYMMDD HHMMSS" format.
+ * @param s The string view to parse.
+ * @return A DateTime structure if successful, or std::nullopt.
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI)
+ * @date Initial, 2026-04-02
+ * @date Last update : 2026-10-22
+ */
+std::optional<DateTime> parseDateTimeString(std::string_view s);
 
 // --- DateArray --------------------------------------------------------------
 using DateArray = std::array<int, 8>;

@@ -130,6 +130,24 @@ rm -rf build
 rm -rf exe/*
 ```
 
+### 7. Python Tools and Dependencies
+
+WAVEWATCH IV provides developer microtools in the `tools/` directory (such as `plot_UQ_domains.py` and `ww4_test_check.py`). These Python tools require Python 3.10+ and the following packages:
+- `numpy` (array data structures and numerical operations)
+- `netCDF4` (NetCDF grid and domain dataset reader)
+- `matplotlib` (graphical plotting and colormapping)
+- `pillow` / `imageio` (image processing and animated GIF generation)
+
+They can generally be installed in your environment using standard `pip`:
+```bash
+pip install numpy netCDF4 matplotlib pillow imageio
+```
+Or within an active conda environment:
+```bash
+conda install numpy netcdf4 matplotlib pillow imageio
+```
+On High-Performance Computing (HPC) systems, these libraries are typically available by loading python modules (e.g., `module load python/3.12` or similar HPC module environments).
+
 # 
 <p align="right">
   <img src="https://github.com/NOAA-EMC/WW4/wiki/images/noaa_logo.gif" alt="NOAA Logo" height="50" ; width="55">  

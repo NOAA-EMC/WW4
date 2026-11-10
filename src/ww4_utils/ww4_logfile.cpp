@@ -87,7 +87,7 @@ void writeInterpolationInfo(std::ostream &os, const DateTime &time1,
 
 // --- writeLogTableHeader ----------------------------------------------------
 void writeLogTableHeader(std::ostream &os) {
-  os << "  "
+  os << "\n  "
         "+-------------------------+---------------------+-----------------+\n"
      << "  |          Time           |       Inputs        |     Outputs     "
         "|\n"
