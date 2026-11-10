@@ -28,6 +28,7 @@ Arguments:
 Options:
   --help, -h        Show this help message and exit.
   --input, -i       Path to the NetCDF domain file (alternative to positional argument).
+  --grid, -g        Path to the associated UGRID grid file containing grid_mask.
   --type, -t        Output graphic file format/type (e.g. png, jpg, jpeg, pdf,
                     eps, gif). Default is 'png'. Output file is saved in the
                     current working directory, replacing the input file's .nc
@@ -89,57 +90,96 @@ DISTINCT_DOMAIN_PALETTE = [
 ]
 
 
-def find_associated_grid_file(domain_filepath: Path) -> Path | None:
+def find_associated_grid_file(
+    domain_filepath: Path, explicit_grid_file: Path | None = None
+) -> Path | None:
     """
-    Search for an associated UGRID grid file in the same directory as the domain file.
-    E.g., for `grid.partitions.nc` or `grid.domains.nc`, looks for `grid.nc`.
+    Search for an associated UGRID grid file in the same directory as the domain file
+    or the current working directory, or return the explicitly specified grid file.
     """
+    if explicit_grid_file is not None:
+        grid_p = Path(explicit_grid_file)
+        if grid_p.exists():
+            return grid_p
+        if (domain_filepath.parent / grid_p).exists():
+            return domain_filepath.parent / grid_p
+        if (Path.cwd() / grid_p).exists():
+            return Path.cwd() / grid_p
+
     name = domain_filepath.name
     parent = domain_filepath.parent
 
-    candidates: list[Path] = []
+    base = name
+    for ext in [".partitions.nc", ".domains.nc", ".partitions", ".domains"]:
+        if name.endswith(ext):
+            base = name[: -len(ext)]
+            break
+
+    candidates: list[Path] = [
+        parent / (base + ".nc"),
+        parent / (base + "_ugrid.nc"),
+        parent / (base + "-ugrid.nc"),
+        parent / (base + ".grid.nc"),
+        parent / (base + "_grid.nc"),
+        parent / base,
+        Path.cwd() / (base + ".nc"),
+        Path.cwd() / (base + "_ugrid.nc"),
+        Path.cwd() / (base + "-ugrid.nc"),
+        Path.cwd() / (base + ".grid.nc"),
+        Path.cwd() / (base + "_grid.nc"),
+        Path.cwd() / "ww4_grid_ugrid.nc",
+        Path.cwd() / "ww4_grid.nc",
+    ]
     if ".partitions." in name:
         candidates.append(parent / name.replace(".partitions.", "."))
-    if name.endswith(".partitions"):
-        candidates.append(parent / name[:-11])
-    if name.endswith(".partitions.nc"):
-        candidates.append(parent / (name[:-14] + ".nc"))
     if ".domains." in name:
         candidates.append(parent / name.replace(".domains.", "."))
-    if name.endswith(".domains"):
-        candidates.append(parent / name[:-8])
-    if name.endswith(".domains.nc"):
-        candidates.append(parent / (name[:-11] + ".nc"))
 
+    seen: set[str] = set()
     for cand in candidates:
-        if cand.exists():
-            return cand
+        cand_str = str(cand)
+        if cand_str not in seen:
+            seen.add(cand_str)
+            if cand.exists():
+                return cand
     return None
 
 
-def read_grid_mask(grid_filepath: Path) -> np.ndarray | None:
+def read_grid_mask(
+    grid_filepath: Path, target_shape: tuple[int, int] | None = None
+) -> np.ndarray | None:
     """
     Read the 2D grid_mask array from an associated UGRID grid file.
     """
     try:
         with nc.Dataset(str(grid_filepath), "r") as ds:
+            mask_arr = None
             if "grid_mask" in ds.variables:
-                return np.array(ds.variables["grid_mask"][:], dtype=np.int32)
-            if "mask" in ds.variables:
-                mask_var = np.array(ds.variables["mask"][:], dtype=np.int32)
+                mask_arr = np.array(ds.variables["grid_mask"][:], dtype=np.int32)
+            elif "mask" in ds.variables:
+                mask_arr = np.array(ds.variables["mask"][:], dtype=np.int32)
+
+            if mask_arr is not None:
+                if target_shape is not None:
+                    if mask_arr.shape == target_shape:
+                        return mask_arr
+                    if mask_arr.size == target_shape[0] * target_shape[1]:
+                        return mask_arr.reshape(target_shape)
+                if mask_arr.ndim == 2:
+                    return mask_arr
                 ny = getattr(ds, "ny", None) or ds.dimensions.get("ny", None)
                 nx = getattr(ds, "nx", None) or ds.dimensions.get("nx", None)
                 if ny is not None and nx is not None:
                     ny_len = ny.size if hasattr(ny, "size") else int(ny)
                     nx_len = nx.size if hasattr(nx, "size") else int(nx)
-                    if mask_var.size == ny_len * nx_len:
-                        return mask_var.reshape((ny_len, nx_len))
+                    if mask_arr.size == ny_len * nx_len:
+                        return mask_arr.reshape((ny_len, nx_len))
     except (OSError, KeyError, ValueError) as err:
         print(f"Notice: Could not load mask from associated grid file: {err}")
     return None
 
 
-def read_domain_file(filepath: Path):
+def read_domain_file(filepath: Path, explicit_grid_file: Path | None = None):
     """
     Read domain map dataset and metadata from a NetCDF domain file.
 
@@ -147,6 +187,8 @@ def read_domain_file(filepath: Path):
     ----------
     filepath : Path
         Path to the NetCDF domain file.
+    explicit_grid_file : Path | None
+        Optional path to the associated grid file.
 
     Returns
     -------
@@ -184,22 +226,28 @@ def read_domain_file(filepath: Path):
         if maps.ndim == 2:
             maps = maps[np.newaxis, :, :]
 
+        target_shape = (maps.shape[1], maps.shape[2])
+
         # Look for grid_mask or mask inside the domain file itself if stored
         grid_mask = None
         if "grid_mask" in ds.variables:
-            grid_mask = np.array(ds.variables["grid_mask"][:], dtype=np.int32)
+            raw_mask = np.array(ds.variables["grid_mask"][:], dtype=np.int32)
+            if raw_mask.shape == target_shape:
+                grid_mask = raw_mask
+            elif raw_mask.size == target_shape[0] * target_shape[1]:
+                grid_mask = raw_mask.reshape(target_shape)
         elif "mask" in ds.variables:
             mask_data = np.array(ds.variables["mask"][:], dtype=np.int32)
-            if mask_data.ndim == 2:
+            if mask_data.shape == target_shape:
                 grid_mask = mask_data
-            elif mask_data.size == maps.shape[1] * maps.shape[2]:
-                grid_mask = mask_data.reshape((maps.shape[1], maps.shape[2]))
+            elif mask_data.size == target_shape[0] * target_shape[1]:
+                grid_mask = mask_data.reshape(target_shape)
 
     # If grid_mask was not found directly in domain file, look for an associated grid file
     if grid_mask is None:
-        assoc_grid = find_associated_grid_file(filepath)
+        assoc_grid = find_associated_grid_file(filepath, explicit_grid_file)
         if assoc_grid is not None:
-            grid_mask = read_grid_mask(assoc_grid)
+            grid_mask = read_grid_mask(assoc_grid, target_shape=target_shape)
             if not is_global:
                 try:
                     with nc.Dataset(str(assoc_grid), "r") as ds_g:
@@ -702,6 +750,14 @@ def main():
         help="Path to the NetCDF domain file (alternative to positional argument).",
     )
     parser.add_argument(
+        "--grid",
+        "-g",
+        type=str,
+        default=None,
+        dest="grid_file",
+        help="Path to associated UGRID grid file containing grid_mask.",
+    )
+    parser.add_argument(
         "--type",
         "-t",
         type=str,
@@ -736,10 +792,11 @@ def main():
         )
 
     input_path = Path(target_file)
+    explicit_grid = Path(args.grid_file) if args.grid_file else None
 
     try:
         maps, num_domains, grid_title, grid_mask, is_global = read_domain_file(
-            input_path
+            input_path, explicit_grid_file=explicit_grid
         )
     except (OSError, KeyError, ValueError) as e:
         print(f"Error reading domain file: {e}")
